@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#FFF8F0">
+<title>中午吃啥 · 转盘</title>
+<meta name="description" content="58 家店 · 263 道菜，尚坤云街A座和泊寓北宸附近，转盘直接转到具体某个菜。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="中午吃啥">
+<meta property="og:title" content="中午吃啥？转一下就别纠结了">
+<meta property="og:description" content="58 家店 · 263 道菜，转盘直接落到具体某个菜 · 尚坤云街A座 / 泊寓北宸">
+<meta property="og:image" content="https://nezha-robot.github.io/lunch-wheel/cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="中午吃啥">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --ink:#2B1D14; --sub:#9A8577; --line:#F0E2D4; --accent:#FF6B2C; --accent2:#FF8F4D;
+    --card:#fff; --bg:#FFF8F0;
+  }
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 8% 4%, rgba(255,154,92,.20), transparent 34%),
+      radial-gradient(circle at 96% 22%, rgba(255,205,120,.18), transparent 32%),
+      radial-gradient(circle at 50% 100%, rgba(140,108,255,.08), transparent 40%);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+  }
+  .app{
+    width:100%;max-width:440px;margin:0 auto;
+    padding:calc(env(safe-area-inset-top) + 18px) 20px 34px;
+    position:relative;
+  }
+  /* ---------- 头部 ---------- */
+  .head-top{display:flex;align-items:center;justify-content:space-between}
+  .clock{font-size:13px;font-weight:700;letter-spacing:.5px;color:#B99B80;font-variant-numeric:tabular-nums}
+  .live{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#B99B80;background:rgba(255,255,255,.7);border:1px solid #F3E4D3;padding:5px 10px;border-radius:20px}
+  .live i{width:5px;height:5px;border-radius:50%;background:#5FC46A;box-shadow:0 0 0 3px rgba(95,196,106,.18)}
+  h1{font-size:34px;line-height:1.15;letter-spacing:-1.2px;margin-top:14px;font-weight:800}
+  h1 em{font-style:normal;color:var(--accent);position:relative}
+  h1 em::after{content:'';position:absolute;left:0;right:0;bottom:2px;height:8px;background:rgba(255,107,44,.16);border-radius:4px;z-index:-1}
+  .greet{margin-top:7px;font-size:12.5px;color:var(--sub);line-height:1.6}
+  .counter{margin-top:9px;font-size:11px;color:#B99B80}
+  .counter b{color:var(--accent);font-size:13px}
+
+  /* ---------- 转盘 ---------- */
+  .stage{margin-top:16px;display:flex;justify-content:center}
+  .ring{position:relative;width:min(88vw,360px);aspect-ratio:1/1}
+  .ring::before{
+    content:'';position:absolute;inset:-9px;border-radius:50%;
+    background:linear-gradient(145deg,#FFE7CE,#FFD2AC 40%,#FFF1E2);
+    box-shadow:0 18px 40px -14px rgba(200,120,60,.45),inset 0 2px 3px #fff;
+  }
+  .ring::after{
+    content:'';position:absolute;inset:-3px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.9);
+  }
+  canvas{position:relative;width:100%;height:100%;display:block;border-radius:50%;z-index:1}
+  .pointer{
+    position:absolute;left:50%;top:-13px;transform:translateX(-50%);
+    width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;
+    border-top:19px solid var(--accent);z-index:6;
+    filter:drop-shadow(0 3px 4px rgba(200,80,20,.35));
+  }
+  .pointer::after{
+    content:'';position:absolute;left:-6px;top:-12px;width:12px;height:12px;border-radius:50%;
+    background:var(--accent);box-shadow:inset 0 2px 2px rgba(255,255,255,.55);
+  }
+  .hub{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:88px;height:88px;border-radius:50%;border:none;z-index:5;
+    background:linear-gradient(150deg,#FF9A5C,var(--accent) 55%,#EF5314);
+    box-shadow:0 8px 18px rgba(210,80,20,.42),inset 0 2px 3px rgba(255,255,255,.5),0 0 0 6px rgba(255,255,255,.55);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    cursor:pointer;transition:transform .12s ease;
+  }
+  .hub:active{transform:translate(-50%,-50%) scale(.93)}
+  .hub span:first-child{font-size:24px;font-weight:800;color:#fff;letter-spacing:1px;text-shadow:0 1px 3px rgba(150,40,0,.3);line-height:1}
+  .hub span:last-child{font-size:9.5px;color:rgba(255,255,255,.9);letter-spacing:.5px}
+  .hub.busy{animation:pulse .9s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 8px 18px rgba(210,80,20,.42),0 0 0 6px rgba(255,255,255,.55)}50%{box-shadow:0 8px 18px rgba(210,80,20,.5),0 0 0 14px rgba(255,255,255,.2)}}
+
+  .pool-line{
+    margin-top:15px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:11px;color:#AD9583;line-height:1.5;
+  }
+  .pool-line b{color:var(--accent);font-weight:800;font-size:12px}
+  .pool-line button{
+    border:1px solid #F0DCC7;background:rgba(255,255,255,.8);color:#C08A5C;
+    font-size:11px;padding:5px 10px;border-radius:20px;white-space:nowrap;cursor:pointer;
+  }
+  .pool-line button:active{transform:scale(.95)}
+
+  /* ---------- 已排除 ---------- */
+  .excluded{
+    margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    background:rgba(255,255,255,.6);border:1px dashed #EFD5BC;border-radius:14px;padding:10px 12px;
+  }
+  .excluded .lab{font-size:10px;color:#B99B80;letter-spacing:1px}
+  .ex-chip{font-size:10.5px;color:#A58F7D;background:#F6EDE3;border-radius:10px;padding:3px 8px;text-decoration:line-through}
+  .ex-reset{margin-left:auto;font-size:10.5px;color:var(--accent);cursor:pointer;font-weight:600}
+
+  /* ---------- 玩法 ---------- */
+  .modes{display:flex;gap:11px;margin-top:16px}
+  .mode{
+    flex:1;position:relative;overflow:hidden;text-align:left;
+    background:var(--card);border:1px solid #F7EADB;border-radius:17px;
+    padding:13px 13px 12px;box-shadow:0 6px 16px rgba(180,120,80,.07);
+    cursor:pointer;transition:transform .14s ease;font-family:inherit;color:inherit;
+  }
+  .mode:active{transform:scale(.97)}
+  .mode .ico{font-size:19px;line-height:1}
+  .mode .t{margin-top:7px;font-size:14px;font-weight:700;letter-spacing:-.2px}
+  .mode .d{margin-top:2px;font-size:10.5px;color:#AC9686;line-height:1.4}
+
+  .data-entry{
+    width:100%;margin-top:11px;display:flex;align-items:center;gap:9px;
+    background:rgba(255,255,255,.72);border:1.5px dashed #EFD5BC;border-radius:15px;
+    padding:13px 15px;cursor:pointer;font-family:inherit;color:#A8815F;font-size:12px;text-align:left;
+  }
+  .data-entry:active{background:#fff}
+  .data-entry .arrow{margin-left:auto;color:#D6B594}
+
+  .section-title{margin-top:22px;display:flex;align-items:center;gap:8px}
+  .section-title span{font-size:12px;font-weight:700;color:#8A7566;letter-spacing:.5px}
+  .section-title hr{flex:1;border:none;border-top:1px solid #F2E5D7}
+  .recent{margin-top:8px;display:flex;flex-direction:column;gap:1px}
+  .r-item{display:flex;align-items:center;justify-content:space-between;padding:9px 2px;border-bottom:1px solid #F7EEE6;font-size:12.5px}
+  .r-item:last-child{border-bottom:none}
+  .r-item .n{font-weight:600}
+  .r-item .m{font-size:10.5px;color:#B9A695}
+  footer{margin-top:26px;text-align:center;font-size:10px;color:#C7B3A1;line-height:1.7}
+
+  /* ---------- 通用浮层 ---------- */
+  .mask{position:fixed;inset:0;background:rgba(43,29,20,.45);backdrop-filter:blur(2px);z-index:90;opacity:0;pointer-events:none;transition:opacity .22s}
+  .mask.on{opacity:1;pointer-events:auto}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:95;max-width:440px;margin:0 auto;
+    background:linear-gradient(180deg,#FFFEFB,#FFF7EC);
+    border-radius:24px 24px 0 0;padding:11px 20px calc(env(safe-area-inset-bottom) + 22px);
+    transform:translateY(102%);transition:transform .34s cubic-bezier(.2,.9,.25,1);
+    box-shadow:0 -12px 40px rgba(120,70,30,.18);max-height:88vh;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .sheet.on{transform:translateY(0)}
+  .handle{width:38px;height:4.5px;border-radius:3px;background:#EDDFD1;margin:0 auto 14px}
+
+  /* 结果 */
+  .res-from{font-size:9.5px;letter-spacing:2.4px;color:#D09A5F;font-weight:700}
+  .res-top{display:flex;align-items:center;gap:14px;margin-top:9px}
+  .res-emoji{
+    width:62px;height:62px;border-radius:19px;flex:none;
+    background:linear-gradient(145deg,#FFF0E0,#FFE0C4);border:1px solid #FFE3C9;
+    display:flex;align-items:center;justify-content:center;font-size:31px;
+    box-shadow:0 5px 14px rgba(230,150,80,.22);
+  }
+  .res-name{font-size:23px;font-weight:800;letter-spacing:-.6px;line-height:1.2}
+  .res-shop{font-size:12px;color:#A89283;margin-top:4px}
+  .res-addr{font-size:11.5px;color:#B08D6E;margin-top:3px;display:flex;align-items:center;gap:4px}
+  .chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+  .chip{font-size:10.5px;padding:4px 10px;border-radius:12px;font-weight:600}
+  .chip.price{background:var(--accent);color:#fff;box-shadow:0 3px 8px rgba(255,106,44,.28)}
+  .chip.sig{background:linear-gradient(135deg,#FFD86E,#F5B93C);color:#6B4A00}
+  .chip.plain{background:#fff;color:#8A7566;border:1px solid #F0E2D4}
+  .res-meta{display:flex;align-items:center;background:rgba(255,255,255,.8);border:1px solid #F6E8D9;border-radius:15px;padding:11px 0;margin-top:13px}
+  .meta-item{flex:1;text-align:center}
+  .meta-item .n{font-size:14px;font-weight:800;letter-spacing:-.2px}
+  .meta-item .l{font-size:9.5px;color:#B4A091;margin-top:2px;letter-spacing:.5px}
+  .meta-div{width:1px;height:22px;background:#F1E3D4}
+  .res-line{margin-top:12px;font-size:12px;color:#9A7A5F;line-height:1.65;padding:10px 12px;background:rgba(255,214,165,.22);border-radius:12px;border-left:3px solid #FFB26E}
+  .res-dishes{margin-top:12px}
+  .rd-label{font-size:10.5px;color:#B79A82;letter-spacing:.5px;margin-bottom:2px}
+  .rd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px solid #F7EEE6;cursor:pointer}
+  .rd:last-child{border-bottom:none}
+  .rd .rn{font-size:13px;font-weight:600}
+  .rd .rs{font-size:10.5px;color:#A89283;white-space:nowrap}
+  .sheet-btns{display:flex;gap:10px;margin-top:15px}
+  .btn{flex:1;height:48px;border-radius:24px;border:none;display:flex;align-items:center;justify-content:center;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .12s}
+  .btn:active{transform:scale(.97)}
+  .btn-ghost{background:#fff;color:var(--ink);border:1.5px solid #EBDACB}
+  .btn-primary{background:linear-gradient(135deg,#FF8A3D,#FF5A1F);color:#fff;box-shadow:0 7px 16px rgba(255,106,44,.32);letter-spacing:.5px}
+
+  /* 排除法 */
+  .ex-head{display:flex;align-items:baseline;gap:8px}
+  .ex-head h3{font-size:18px;letter-spacing:-.4px}
+  .ex-head span{font-size:11px;color:#B49C86}
+  .ex-tip{margin-top:6px;font-size:11.5px;color:#A89283;line-height:1.6}
+  .ex-cats{display:flex;gap:7px;margin-top:12px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none}
+  .ex-cats::-webkit-scrollbar{display:none}
+  .ex-cat{flex:none;font-size:11.5px;padding:6px 12px;border-radius:16px;border:1px solid #F0E0D0;background:#fff;color:#8A7566;cursor:pointer;white-space:nowrap}
+  .ex-cat.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .ex-list{margin-top:10px;border-top:1px solid #F5EBE1}
+  .ex-row{display:flex;align-items:center;gap:9px;padding:11px 2px;border-bottom:1px solid #F7EEE6;cursor:pointer}
+  .ex-row .box{width:19px;height:19px;border-radius:6px;border:1.5px solid #E7D6C5;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+  .ex-row.out .box{background:var(--accent);border-color:var(--accent)}
+  .ex-row.out .nm{text-decoration:line-through;color:#BBA897}
+  .ex-row .nm{font-size:13px;font-weight:600}
+  .ex-row .meta{margin-left:auto;font-size:10.5px;color:#B4A091;text-align:right;line-height:1.4}
+  .ex-empty{padding:26px 0;text-align:center;font-size:12px;color:#BBA897}
+
+  /* 长按 */
+  .quick{
+    position:fixed;inset:0;z-index:96;background:linear-gradient(165deg,#241812,#3B2519);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;
+    color:#fff;user-select:none;-webkit-user-select:none;touch-action:none;
+  }
+  .quick-close{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:20px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;cursor:pointer}
+  .quick-label{font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.45)}
+  .quick-text{margin-top:20px;font-size:29px;font-weight:800;letter-spacing:-.6px;text-align:center;line-height:1.35;transition:transform .12s;min-height:42px}
+  .quick-text.rolling{color:rgba(255,255,255,.62);filter:blur(.3px)}
+  .quick-text.locked{color:#FFD08A;text-shadow:0 4px 22px rgba(255,150,60,.5)}
+  .quick-hint{margin-top:16px;font-size:11.5px;color:rgba(255,255,255,.32);text-align:center;line-height:1.7;max-width:280px}
+  .quick-actions{display:flex;gap:10px;margin-top:26px;width:100%;max-width:320px}
+  .quick-actions .btn-ghost{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2)}
+
+  /* 我的店 */
+  .form-row{margin-top:11px}
+  .form-row label{font-size:11px;color:#A89283;letter-spacing:.5px}
+  .form-row input{
+    width:100%;margin-top:5px;height:44px;border-radius:13px;border:1.5px solid #EFDFCF;background:#fff;
+    padding:0 13px;font-size:14px;font-family:inherit;color:var(--ink);outline:none;
+  }
+  .form-row input:focus{border-color:var(--accent)}
+  .form-two{display:flex;gap:9px}
+  .form-two .form-row{flex:1}
+  .mylist{margin-top:14px;border-top:1px solid #F5EBE1}
+  .myrow{display:flex;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid #F7EEE6;font-size:12.5px}
+  .myrow .mn{font-weight:700}
+  .myrow .ma{font-size:10.5px;color:#B4A091}
+  .myrow .del{margin-left:auto;font-size:11px;color:#D98B5C;cursor:pointer;padding:4px 6px}
+
+  /* ---------- 心情筛选 ---------- */
+  .mood-wrap{margin-top:13px}
+  .mood-lab{font-size:10px;letter-spacing:2px;color:#C0A791;margin-bottom:7px}
+  .moods{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .moods::-webkit-scrollbar{display:none}
+  .mood{
+    flex:none;font-size:11.5px;padding:7px 13px;border-radius:18px;border:1px solid #F0E0D0;
+    background:rgba(255,255,255,.86);color:#8A7566;cursor:pointer;white-space:nowrap;
+    font-family:inherit;transition:all .16s;font-weight:600;
+  }
+  .mood:active{transform:scale(.95)}
+  .mood.on{background:var(--ink);color:#fff;border-color:var(--ink);box-shadow:0 4px 12px rgba(43,29,20,.18)}
+
+  /* ---------- 声音开关 ---------- */
+  .snd{
+    width:29px;height:29px;border-radius:50%;border:1px solid #F3E4D3;background:rgba(255,255,255,.7);
+    font-size:12.5px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    padding:0;font-family:inherit;
+  }
+  .snd:active{transform:scale(.92)}
+  .snd.off{opacity:.45}
+
+  /* ---------- 饭签 ---------- */
+  .sign-btn{
+    width:100%;margin-top:10px;height:44px;border-radius:22px;border:1.5px dashed #EFCBAA;
+    background:rgba(255,255,255,.72);color:#B07C4C;font-size:12.5px;font-weight:700;
+    font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+  }
+  .sign-btn:active{background:#fff}
+  .sign{
+    position:fixed;inset:0;z-index:130;background:rgba(28,18,12,.86);backdrop-filter:blur(6px);
+    display:none;align-items:center;justify-content:center;padding:22px;overflow:auto;
+  }
+  .sign.on{display:flex}
+  .sign-box{width:100%;max-width:330px;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .sign-tip{font-size:11px;color:rgba(255,255,255,.62);letter-spacing:.5px;text-align:center}
+  .sign-box img{
+    width:100%;border-radius:18px;display:block;
+    box-shadow:0 20px 50px -12px rgba(0,0,0,.55);animation:signIn .34s cubic-bezier(.2,1.1,.4,1);
+  }
+  @keyframes signIn{from{transform:scale(.9) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+  .sign-btns{display:flex;gap:10px;width:100%}
+  .sign-btns .btn{height:44px;font-size:13.5px}
+  .sign-btns .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.22)}
+
+  /* ---------- 微信分享提示 ---------- */
+  .wx-tip{
+    position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);z-index:115;
+    display:flex;align-items:center;gap:10px;max-width:calc(100vw - 34px);
+    background:rgba(43,29,20,.94);color:#fff;font-size:12px;line-height:1.4;
+    padding:11px 15px;border-radius:16px;box-shadow:0 12px 28px -8px rgba(0,0,0,.4);
+    opacity:0;pointer-events:none;transition:all .3s ease;
+  }
+  .wx-tip.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .wx-tip b{color:#FFC884}
+  .wx-tip i{font-style:normal;font-size:15px;color:rgba(255,255,255,.5);padding:0 2px;cursor:pointer}
+
+  .toast{
+    position:fixed;left:50%;bottom:88px;transform:translate(-50%,14px);z-index:120;
+    background:rgba(43,29,20,.92);color:#fff;font-size:12.5px;padding:11px 20px;border-radius:22px;
+    opacity:0;pointer-events:none;transition:all .26s
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="head-top">
+    <span class="clock" id="clock">12:00</span>
+    <span style="display:flex;align-items:center;gap:8px">
+      <button class="snd" id="sndBtn" aria-label="音效开关">🔊</button>
+      <span class="live"><i></i><span id="poolInfo">58 家 · 263 道</span></span>
+    </span>
+  </div>
+  <h1>中午<em>吃啥</em>？</h1>
+  <p class="greet" id="greet">到饭点了，赶紧决定，晚了好店要排队</p>
+  <p class="counter" id="counter" style="display:none">转盘已经替你做了 <b id="cnt">0</b> 次决定</p>
+
+  <div class="mood-wrap">
+    <div class="mood-lab" id="moodLab">今天什么心情</div>
+    <div class="moods" id="moods"></div>
+  </div>
+
+  <div class="stage">
+    <div class="ring">
+      <canvas id="wheel"></canvas>
+      <div class="pointer"></div>
+      <button class="hub" id="hub" aria-label="开始转盘">
+        <span id="hubGo">GO</span><span id="hubSub">点我</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="pool-line">
+    <span>12 格随机抽自 <b id="poolNum">212</b> 道，转完自动换盘</span>
+    <button id="reshuffle">换一批 ↻</button>
+  </div>
+
+  <div class="excluded" id="excludedBar" style="display:none"></div>
+
+  <div class="modes">
+    <button class="mode" id="btnExclude">
+      <div class="ico">🧠</div><div class="t">排除法</div><div class="d">重度纠结患者专用</div>
+    </button>
+    <button class="mode" id="btnQuick">
+      <div class="ico">👆</div><div class="t">长按抽签</div><div class="d">松手即定，不许反悔</div>
+    </button>
+  </div>
+
+  <button class="data-entry" id="btnManage">
+    <span>📥</span><span>我的店 · 把楼下那几家填进来</span><span class="arrow">→</span>
+  </button>
+
+  <div id="recentWrap" style="display:none">
+    <div class="section-title"><span>最近吃过</span><hr></div>
+    <div class="recent" id="recentList"></div>
+  </div>
+
+  <footer>
+    58 家店 · 263 道菜<br>尚坤云街A座 & 泊寓北宸 · 真实店铺与菜品
+  </footer>
+</div>
+
+<div class="mask" id="mask"></div>
+
+<!-- 结果 -->
+<div class="sheet" id="sheet">
+  <div class="handle"></div>
+  <div class="res-from" id="resFrom">转盘落在</div>
+  <div class="res-top">
+    <div class="res-emoji" id="resEmoji">🍜</div>
+    <div style="min-width:0">
+      <div class="res-name" id="resName">—</div>
+      <div class="res-shop" id="resShop">—</div>
+      <div class="res-addr" id="resAddr">—</div>
+    </div>
+  </div>
+  <div class="chips" id="resChips"></div>
+  <div class="res-meta">
+    <div class="meta-item"><div class="n" id="mDist">—</div><div class="l">距离</div></div>
+    <div class="meta-div"></div>
+    <div class="meta-item"><div class="n" id="mSpicy">—</div><div class="l">辣度</div></div>
+    <div class="meta-div"></div>
+    <div class="meta-item"><div class="n" id="mKcal">—</div><div class="l">千卡</div></div>
+  </div>
+  <div class="res-line" id="resLine">—</div>
+  <div class="res-dishes" id="resAlts"></div>
+  <div class="sheet-btns">
+    <button class="btn btn-ghost" id="btnAgain">不是这个，再抽</button>
+    <button class="btn btn-primary" id="btnGo">就它了</button>
+  </div>
+  <button class="sign-btn" id="btnSign">📤 生成饭签，发群里让同事投票</button>
+</div>
+
+<!-- 排除法 -->
+<div class="sheet" id="exSheet">
+  <div class="handle"></div>
+  <div class="ex-head"><h3>排除法</h3><span id="exCount">点掉不想吃的，剩下的才进盘</span></div>
+  <div class="ex-tip">一边划一边看一眼，划到剩没几个的时候，其实答案已经出来了。</div>
+  <div class="ex-cats" id="exCats"></div>
+  <div class="ex-list" id="exList"></div>
+  <div class="sheet-btns">
+    <button class="btn btn-ghost" id="exReset">全部恢复</button>
+    <button class="btn btn-primary" id="exDone">开转 →</button>
+  </div>
+</div>
+
+<!-- 我的店 -->
+<div class="sheet" id="mySheet">
+  <div class="handle"></div>
+  <div class="ex-head"><h3>我的店</h3><span>加进来就会进转盘</span></div>
+  <div class="ex-tip">楼下那几家点评上搜不到的，手动填。填完自动参与抽签。</div>
+  <div class="form-row"><label>店名</label><input id="fShop" placeholder="例如：楼下那家兰州拉面" maxlength="20"></div>
+  <div class="form-row"><label>招牌菜 / 你常点的</label><input id="fDish" placeholder="例如：牛肉面" maxlength="20"></div>
+  <div class="form-two">
+    <div class="form-row"><label>价格（元）</label><input id="fPrice" type="number" inputmode="numeric" placeholder="20"></div>
+    <div class="form-row"><label>地址（选填）</label><input id="fArea" placeholder="逸盛路" maxlength="20"></div>
+  </div>
+  <div class="sheet-btns">
+    <button class="btn btn-primary" id="fAdd">加进转盘</button>
+  </div>
+  <div class="mylist" id="myList"></div>
+</div>
+
+<!-- 长按抽签 -->
+<div class="quick" id="quick" style="display:none">
+  <div class="quick-close" id="quickClose">×</div>
+  <div class="quick-label" id="quickLabel">长按这个屏幕</div>
+  <div class="quick-text" id="quickText">按住不放</div>
+  <div class="quick-hint" id="quickHint">按住不放，屏幕会疯狂滚动，松手的那一刻就是答案</div>
+  <div class="quick-actions" id="quickActions" style="display:none">
+    <button class="btn btn-ghost" id="quickAgain">再按一次</button>
+    <button class="btn btn-primary" id="quickGo">看看吃啥</button>
+  </div>
+</div>
+
+<!-- 今日饭签 -->
+<div class="sign" id="sign">
+  <div class="sign-box">
+    <div class="sign-tip" id="signTip">长按图片 → 保存 / 转发给朋友</div>
+    <img id="signImg" alt="今日饭签">
+    <div class="sign-btns">
+      <button class="btn btn-ghost" id="signClose">关掉</button>
+      <button class="btn btn-primary" id="signDl">存图</button>
+    </div>
+  </div>
+</div>
+
+<div class="wx-tip" id="wxTip">
+  <span>点右上角 <b>···</b> 发给同事，一起转同一个盘</span>
+  <i id="wxTipClose">×</i>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====== 数据 ====== */
+const CATS = [{"id":"noodle","name":"粉面","short":"粉面","emoji":"🍜","soft":"#FFD9C7","color":"#FF7A3D","tagline":"一碗热汤面，治百病","mood":"需要被热气安慰的一天"},{"id":"rice","name":"盖饭","short":"盖饭","emoji":"🍚","soft":"#FFE9BC","color":"#E8A317","tagline":"碳水就是快乐本身","mood":"饿得能吞下一头牛"},{"id":"light","name":"轻食","short":"轻食","emoji":"🥗","soft":"#D8F5C6","color":"#52B93A","tagline":"今天也想瘦两斤","mood":"昨晚吃多了，今天赎罪"},{"id":"spicy","name":"辣的重口","short":"辣的","emoji":"🌶️","soft":"#FFC9C2","color":"#EF4B3C","tagline":"辣一下，精神一整天","mood":"需要用痛觉确认自己还活着"},{"id":"fried","name":"炸物快餐","short":"炸物","emoji":"🍗","soft":"#FFE1A8","color":"#D99A18","tagline":"罪恶，但真的香","mood":"今天不想对自己太严格"},{"id":"soup","name":"汤饭砂锅","short":"汤粥","emoji":"🍲","soft":"#E6D8FF","color":"#8A5CD6","tagline":"暖暖胃，慢慢来","mood":"想被温柔对待"},{"id":"bbq","name":"烧烤串串","short":"烧烤","emoji":"🍢","soft":"#C9F0EE","color":"#17A9A2","tagline":"撸串不分午晚","mood":"今天已经不管不顾了"},{"id":"random","name":"随缘","short":"随缘","emoji":"🎲","soft":"#D6DEFF","color":"#4A63D8","tagline":"老天爷说了算","mood":"彻底放弃思考"}];
+const RAW_SHOPS = [{"id":"s01","name":"畅碗居烧鸭面馆","area":"逸盛路79号","distance":700,"price":20,"rating":4.4,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"24 小时","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"24小时营业；饭点满座建议早点去","dishes":[{"id":"d0101","name":"烧鸭饭","price":20,"spicy":0,"kcal":720,"signature":true,"desc":"20块一堆烧鸭加卤蛋还送汤，油润不腻","tags":["招牌"]},{"id":"d0102","name":"招牌烧鸭汤面","price":20,"spicy":0,"kcal":660,"signature":true,"desc":"高汤底够味，皮脆肉实","tags":["招牌"]},{"id":"d0103","name":"烧鸭粉","price":20,"spicy":0,"kcal":620,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0104","name":"猪手饭","price":25,"spicy":0,"kcal":730,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s02","name":"杜小姐在西北·肉夹馍·油泼面","area":"吴家门路","distance":450,"price":22,"rating":4.3,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d0201","name":"青椒肉夹馍","price":13,"spicy":1,"kcal":539,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d0202","name":"腊汁肉夹馍","price":13,"spicy":0,"kcal":539,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0203","name":"肉酱拌面","price":16,"spicy":0,"kcal":652,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0204","name":"油泼面","price":18,"spicy":1,"kcal":656,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s03","name":"马帮米线","area":"通运街215号","distance":260,"price":24,"rating":3.8,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"透明厨房；米线Q弹汤底鲜","dishes":[{"id":"d0301","name":"金汤菌菇米线","price":24,"spicy":0,"kcal":628,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0302","name":"酸菜鱼米线","price":26,"spicy":1,"kcal":632,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d0303","name":"麻辣牛腩炝米线","price":28,"spicy":2,"kcal":636,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d0304","name":"番茄肥牛米线","price":26,"spicy":0,"kcal":632,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0305","name":"滋补老母鸡米线","price":28,"spicy":0,"kcal":636,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0306","name":"辣子鸡丁盖浇饭","price":24,"spicy":2,"kcal":728,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d0307","name":"卤肉炒饭","price":20,"spicy":0,"kcal":720,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0308","name":"卤鸭头","price":10,"spicy":1,"kcal":530,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s04","name":"巧燕坊一笼一蒸","area":"通运街·盛德楼下","distance":100,"price":21,"rating":4,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"杭州15年老牌；烧麦皮只有7克；趁热吃","dishes":[{"id":"d0401","name":"笋丁鲜肉烧麦(一笼5个)","price":12,"spicy":0,"kcal":444,"signature":true,"desc":"皮薄到只有7克，一咬一口汤汁，趁热吃","tags":["招牌"]},{"id":"d0402","name":"大虾鲜肉烧麦","price":15,"spicy":0,"kcal":450,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0403","name":"钱府三鲜烧麦","price":14,"spicy":0,"kcal":448,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0404","name":"生煎烧麦","price":14,"spicy":0,"kcal":448,"signature":false,"desc":"烧麦做成生煎，底脆多汁的隐藏吃法","tags":["家常"]},{"id":"d0405","name":"全鲜肉燕皮馄饨","price":10,"spicy":0,"kcal":420,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0406","name":"腊味滑鸡荷叶饭","price":22,"spicy":0,"kcal":724,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0407","name":"牛肉东塘粉丝煲","price":22,"spicy":0,"kcal":944,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s05","name":"青藏麦客牛肉面","area":"通运街151号","distance":150,"price":20,"rating":4.3,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d0501","name":"牛肉面","price":20,"spicy":0,"kcal":660,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0502","name":"加肉牛肉面","price":26,"spicy":0,"kcal":672,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s06","name":"外婆楼下东北饺子馆","area":"通运街203号","distance":300,"price":22,"rating":4.3,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d0601","name":"猪肉白菜水饺","price":15,"spicy":0,"kcal":550,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0602","name":"酸菜猪肉水饺","price":16,"spicy":0,"kcal":552,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0603","name":"韭菜鸡蛋水饺","price":15,"spicy":0,"kcal":680,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s07","name":"贵州好吃店","area":"越秀星汇园","distance":400,"price":20,"rating":4.3,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d0701","name":"羊肉粉","price":18,"spicy":0,"kcal":616,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0702","name":"羊杂煲","price":32,"spicy":0,"kcal":964,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0703","name":"酸汤粉","price":16,"spicy":1,"kcal":612,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s08","name":"顺旺基大厨现炒","area":"通运街166号盛德国际","distance":180,"price":21,"rating":4.3,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"10:00-14:00 / 16:00-20:30","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"大锅现炒；10:00-14:00/16:00-20:30","dishes":[{"id":"d0801","name":"红烧琵琶腿","price":16,"spicy":0,"kcal":548,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0802","name":"红烧排骨","price":18,"spicy":0,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0803","name":"茶树菇烧肉","price":18,"spicy":0,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0804","name":"尖椒小炒鸡木桶饭","price":20,"spicy":1,"kcal":720,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d0805","name":"红烧青占鱼","price":18,"spicy":0,"kcal":586,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0806","name":"虾仁水蒸蛋","price":12,"spicy":0,"kcal":536,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0807","name":"卤水豆腐","price":8,"spicy":0,"kcal":196,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s09","name":"老娘舅","area":"逸盛路·上亿广场","distance":620,"price":27,"rating":4.3,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d0901","name":"鱼香肉丝套饭","price":26,"spicy":0,"kcal":732,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d0902","name":"茶树菇老鸭","price":32,"spicy":0,"kcal":596,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d0903","name":"梅菜扣肉饭","price":28,"spicy":0,"kcal":736,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s10","name":"红灯笼面·饭·炒菜","area":"逸盛路39号","distance":860,"price":37,"rating":4.4,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"咸菜免费；菜量实在；后厨曾上净厨黑榜已整改","dishes":[{"id":"d1001","name":"油条肉松炒饭","price":22,"spicy":0,"kcal":724,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d1002","name":"小炒黄牛肉","price":42,"spicy":1,"kcal":784,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d1003","name":"扬州炒饭","price":20,"spicy":0,"kcal":720,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1004","name":"牛肉拌面","price":20,"spicy":0,"kcal":660,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1005","name":"香菇肉片盖浇饭","price":20,"spicy":0,"kcal":720,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1006","name":"特色海鲜粥","price":26,"spicy":0,"kcal":578,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1007","name":"梅菜扣肉","price":32,"spicy":0,"kcal":596,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s11","name":"麦当劳","area":"盛德国际3幢","distance":100,"price":23,"rating":4.6,"categoryIds":["fried"],"tags":["探店收录","勾庄"],"emoji":"🍗","color":"#D99A18","hours":"06:00-23:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d1101","name":"麦辣鸡腿堡套餐","price":33,"spicy":1,"kcal":846,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d1102","name":"板烧鸡腿堡套餐","price":33,"spicy":0,"kcal":846,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1103","name":"巨无霸套餐","price":36,"spicy":0,"kcal":852,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1104","name":"麦辣鸡翅(2块)","price":12,"spicy":1,"kcal":674,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s12","name":"汉堡王","area":"上亿广场","distance":640,"price":27,"rating":5,"categoryIds":["fried"],"tags":["探店收录","勾庄"],"emoji":"🍗","color":"#D99A18","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d1201","name":"王道嫩香鸡块","price":15,"spicy":0,"kcal":680,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d1202","name":"皇堡套餐","price":35,"spicy":0,"kcal":850,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1203","name":"天辣皇鸡腿堡套餐","price":38,"spicy":1,"kcal":856,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1204","name":"薯霸王Plus","price":16,"spicy":0,"kcal":548,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s13","name":"华莱士·全鸡汉堡","area":"德悦广场","distance":300,"price":16,"rating":4.3,"categoryIds":["fried"],"tags":["探店收录","勾庄"],"emoji":"🍗","color":"#D99A18","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d1301","name":"香辣鸡腿堡","price":12,"spicy":1,"kcal":674,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d1302","name":"香辣鸡排堡","price":11,"spicy":0,"kcal":672,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1303","name":"全鸡套餐","price":22,"spicy":0,"kcal":824,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s14","name":"喜姐炸串","area":"上亿广场","distance":680,"price":18,"rating":4.3,"categoryIds":["bbq"],"tags":["探店收录","勾庄"],"emoji":"🍢","color":"#17A9A2","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d1401","name":"脆皮年糕","price":6,"spicy":0,"kcal":518,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d1402","name":"开花大香肠","price":6,"spicy":0,"kcal":518,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1403","name":"掌中宝","price":10,"spicy":0,"kcal":530,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s15","name":"溢湘堂·湖南小炒","area":"逸盛路168号上亿彩虹郡","distance":590,"price":63,"rating":5,"categoryIds":["spicy"],"tags":["探店收录","勾庄"],"emoji":"🌶️","color":"#EF4B3C","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"五常米饭小猪电饭煲现蒸；道道现炒巨下饭","dishes":[{"id":"d1501","name":"鲜炒黄牛肉(三部位合炒)","price":52,"spicy":2,"kcal":804,"signature":true,"desc":"嫩肉+吊龙+雪花猛火爆炒，配五常米饭","tags":["招牌","重辣"]},{"id":"d1502","name":"辣椒小炒肉","price":32,"spicy":2,"kcal":596,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d1503","name":"擂辣椒茄子皮蛋","price":22,"spicy":2,"kcal":566,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1504","name":"干锅手撕包菜","price":22,"spicy":1,"kcal":894,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1505","name":"香辣小酥肉","price":28,"spicy":1,"kcal":584,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1506","name":"永州血鸭","price":48,"spicy":3,"kcal":644,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1507","name":"口味鸡爪","price":28,"spicy":3,"kcal":706,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1508","name":"妈妈干豆角腊肉","price":36,"spicy":0,"kcal":608,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1509","name":"酸辣土豆丝","price":16,"spicy":1,"kcal":212,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1510","name":"虾仁水蒸蛋","price":22,"spicy":0,"kcal":566,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1511","name":"百香果冰粉","price":10,"spicy":0,"kcal":600,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s16","name":"烤匠麻辣烤鱼","area":"上亿广场4F","distance":650,"price":81,"rating":4.5,"categoryIds":["spicy"],"tags":["探店收录","勾庄"],"emoji":"🌶️","color":"#EF4B3C","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"一条清江鱼一人食刚好；建议加土豆粉莴笋；营业到凌晨5点","dishes":[{"id":"d1601","name":"麻辣诱惑味烤鱼","price":78,"spicy":2,"kcal":706,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d1602","name":"麻辣味手工豆花烤鱼","price":82,"spicy":2,"kcal":714,"signature":true,"desc":"东北黑豆每天手工现磨","tags":["招牌","重辣"]},{"id":"d1603","name":"葱葱味烤鱼","price":76,"spicy":1,"kcal":702,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1604","name":"黑椒蚝油味豆花烤鱼","price":82,"spicy":0,"kcal":714,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1605","name":"烤茄子","price":18,"spicy":1,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1606","name":"烤鸡翅","price":15,"spicy":0,"kcal":680,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1607","name":"羊肉串","price":8,"spicy":0,"kcal":366,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1608","name":"满杯红糖冰粉","price":12,"spicy":0,"kcal":604,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s17","name":"辣伍歌钱江源鱼庄","area":"逸盛路172号上亿广场旁","distance":590,"price":58,"rating":4.3,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"10:00-14:00 / 16:00-22:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"衢州菜+夜宵烧烤；10:00-14:00/16:00-22:00","dishes":[{"id":"d1701","name":"衢州鸭掌煲","price":48,"spicy":2,"kcal":996,"signature":true,"desc":"传统衢州味，软糯入味","tags":["招牌","重辣"]},{"id":"d1702","name":"椒盐鸭头","price":28,"spicy":2,"kcal":584,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d1703","name":"衢州生炒鸡","price":52,"spicy":2,"kcal":754,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1704","name":"酱爆茄子","price":22,"spicy":0,"kcal":566,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1705","name":"莴笋干","price":18,"spicy":1,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s18","name":"品衢味衢州菜","area":"管家塘新苑","distance":520,"price":77,"rating":4.2,"categoryIds":["spicy"],"tags":["探店收录","勾庄"],"emoji":"🌶️","color":"#EF4B3C","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"改良衢州菜辣度友好；鱼现杀","dishes":[{"id":"d1801","name":"招牌清水鱼(紫苏)","price":58,"spicy":2,"kcal":666,"signature":true,"desc":"点完现杀，紫苏去腥，细嫩刺少","tags":["招牌","重辣"]},{"id":"d1802","name":"竹林生炒鸡","price":52,"spicy":1,"kcal":754,"signature":true,"desc":"辣椒看着多，其实是鲜香不辣","tags":["招牌","微辣"]},{"id":"d1803","name":"尖椒小炒肉","price":32,"spicy":2,"kcal":596,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1804","name":"蒜蓉铁板虾","price":58,"spicy":0,"kcal":674,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1805","name":"鸭头鸭爪","price":32,"spicy":2,"kcal":596,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]}]},{"id":"s19","name":"白玉碗·婺源家宴","area":"逸盛路上亿广场汉堡王对面","distance":640,"price":61,"rating":3.8,"categoryIds":["spicy"],"tags":["探店收录","勾庄"],"emoji":"🌶️","color":"#EF4B3C","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"江西菜分量扎实2人3菜吃不完；炒粉干锅气足","dishes":[{"id":"d1901","name":"招牌口水鱼","price":48,"spicy":2,"kcal":646,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d1902","name":"江西肉丝鸡蛋炒粉","price":22,"spicy":1,"kcal":624,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d1903","name":"酸菜鱼","price":42,"spicy":1,"kcal":634,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1904","name":"土烧鱼头","price":48,"spicy":0,"kcal":646,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1905","name":"生炒鸡","price":46,"spicy":1,"kcal":742,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d1906","name":"老干妈手抓排","price":42,"spicy":2,"kcal":626,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1907","name":"特色粉蒸肉","price":36,"spicy":0,"kcal":652,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d1908","name":"口水鸡","price":32,"spicy":2,"kcal":714,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d1909","name":"蒜泥生菜","price":14,"spicy":0,"kcal":208,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s20","name":"横山羊肉汤馆","area":"港虹东路136号","distance":500,"price":42,"rating":3.8,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"枣庄菜；菜量巨大2人点1份炒鸡就够；地锅饼要泡汤汁","dishes":[{"id":"d2001","name":"特色炒鸡(配地锅饼)","price":48,"spicy":1,"kcal":946,"signature":true,"desc":"地锅饼撕开泡进汤汁，吸满咸鲜","tags":["招牌","微辣"]},{"id":"d2002","name":"羊肉汤","price":30,"spicy":0,"kcal":590,"signature":true,"desc":"处理得干净，天冷喝一碗很暖","tags":["招牌"]},{"id":"d2003","name":"青椒豆腐","price":18,"spicy":1,"kcal":216,"signature":true,"desc":"老豆腐吸饱汤汁，去晚了可能卖完","tags":["招牌","微辣"]},{"id":"d2004","name":"辣炒大肠","price":36,"spicy":2,"kcal":608,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d2005","name":"红烧小黄花鱼","price":32,"spicy":0,"kcal":614,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2006","name":"酸辣土豆丝","price":14,"spicy":1,"kcal":208,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d2007","name":"面疙瘩汤","price":12,"spicy":0,"kcal":644,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s21","name":"单羊世家·羊肉汤","area":"勾庄","distance":570,"price":32,"rating":4.3,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d2101","name":"招牌羊肉汤","price":30,"spicy":0,"kcal":590,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d2102","name":"羊杂汤","price":32,"spicy":0,"kcal":596,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2103","name":"老家烧饼","price":5,"spicy":0,"kcal":515,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s22","name":"香喔本鸡煲","area":"逸盛路75号物流中心","distance":750,"price":65,"rating":4.3,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"11:00 - 22:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"菜量扎实2人3菜吃不完；11:00开始营业","dishes":[{"id":"d2201","name":"招牌竹林土鸡煲","price":88,"spicy":0,"kcal":1076,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d2202","name":"生蚝土鸡煲","price":108,"spicy":0,"kcal":1116,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2203","name":"霸王别鸡锅","price":118,"spicy":0,"kcal":1086,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2204","name":"筒骨千张笋干锅","price":68,"spicy":0,"kcal":986,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2205","name":"辣卤鸭爪","price":22,"spicy":2,"kcal":566,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d2206","name":"蛋炒饭","price":12,"spicy":0,"kcal":704,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s23","name":"金华砂锅·农家大锅台","area":"物流中心","distance":800,"price":71,"rating":4.3,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d2301","name":"地锅鸡","price":78,"spicy":0,"kcal":1006,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d2302","name":"地锅鱼","price":88,"spicy":0,"kcal":1026,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s24","name":"粤鲜鸡煲馆","area":"通运街","distance":680,"price":82,"rating":4.4,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"携程美食收录的真实店铺。","dishes":[{"id":"d2401","name":"鲜切鸡煲","price":98,"spicy":0,"kcal":1096,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d2402","name":"响铃卷","price":18,"spicy":0,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s25","name":"好运稻香·品良渚土菜","area":"好运路271号2楼","distance":730,"price":82,"rating":5,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"9:00-13:30 / 16:00-21:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"9:00-13:30/16:00-21:00；适合人多聚餐单人略重","dishes":[{"id":"d2501","name":"果木香烤鸭","price":78,"spicy":0,"kcal":734,"signature":true,"desc":"果木香气，皮脆肉嫩","tags":["招牌"]},{"id":"d2502","name":"蛋黄鸡翅","price":32,"spicy":0,"kcal":714,"signature":true,"desc":"必点，咸甜流油","tags":["招牌"]},{"id":"d2503","name":"酸菜鲈鱼","price":58,"spicy":1,"kcal":666,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d2504","name":"桐庐生炒鸡","price":52,"spicy":1,"kcal":754,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d2505","name":"生煎拇指小笼包","price":22,"spicy":0,"kcal":566,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2506","name":"干锅牛蛙","price":58,"spicy":2,"kcal":966,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d2507","name":"糖醋里脊","price":36,"spicy":0,"kcal":608,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2508","name":"西湖牛肉羹","price":28,"spicy":0,"kcal":756,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2509","name":"海鲜干捞粉丝","price":32,"spicy":0,"kcal":644,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s26","name":"陈八两面家","area":"上亿广场·云街侧","distance":620,"price":31,"rating":4.4,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"10:00-21:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"手工面北面南烧；酸菜黑鱼面汤头一绝；浇头现炒","dishes":[{"id":"d2601","name":"酱香牛肉面","price":32,"spicy":0,"kcal":684,"signature":true,"desc":"手工面劲道，牛肉炖到酥烂，南北融合那一路","tags":["招牌"]},{"id":"d2602","name":"酸菜黑鱼面","price":36,"spicy":1,"kcal":692,"signature":true,"desc":"鱼片嫩、汤头酸爽，很多人专程为它来","tags":["招牌","微辣"]},{"id":"d2603","name":"茄汁黑猪片儿川","price":26,"spicy":0,"kcal":578,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2604","name":"手切酸菜牛腱面","price":34,"spicy":0,"kcal":688,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2605","name":"特制雪菜牛腩面","price":32,"spicy":0,"kcal":684,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2606","name":"瑶柱卤肉干拌面","price":28,"spicy":0,"kcal":676,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2607","name":"香干肉丝干拌面","price":24,"spicy":0,"kcal":668,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2608","name":"卤汁大排面","price":30,"spicy":0,"kcal":680,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2609","name":"椒麻川香牛杂面","price":34,"spicy":2,"kcal":688,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d2610","name":"黄金脆皮猪五花面","price":38,"spicy":0,"kcal":696,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s27","name":"新丰小吃","area":"逸盛路·云街侧","distance":700,"price":10,"rating":4.3,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"24 小时","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"24小时；人均10块管饱；饭点很难找位子","dishes":[{"id":"d2701","name":"牛肉粉丝","price":8,"spicy":0,"kcal":596,"signature":true,"desc":"新丰三宝之一，几块钱一碗从小吃到大","tags":["招牌"]},{"id":"d2702","name":"虾肉馄饨","price":10,"spicy":0,"kcal":420,"signature":true,"desc":"皮薄汤鲜，配一笼小笼刚好","tags":["招牌"]},{"id":"d2703","name":"虾肉小笼","price":12,"spicy":0,"kcal":536,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2704","name":"鲜肉大包","price":3,"spicy":0,"kcal":509,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2705","name":"葱包桧","price":6,"spicy":0,"kcal":518,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2706","name":"鸭血汤","price":7,"spicy":0,"kcal":521,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s28","name":"九丼面馆","area":"打石漾路","distance":760,"price":25,"rating":4.1,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"09:00-21:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"浇头分量足；本地人常去","dishes":[{"id":"d2801","name":"招牌牛肉面","price":22,"spicy":0,"kcal":664,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d2802","name":"雪菜肉丝面","price":16,"spicy":0,"kcal":652,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2803","name":"大排面","price":20,"spicy":0,"kcal":660,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2804","name":"片儿川","price":18,"spicy":0,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2805","name":"猪肝面","price":22,"spicy":0,"kcal":664,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s29","name":"募岚面馆","area":"上亿彩虹郡","distance":680,"price":22,"rating":4.2,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"现炒浇头；面量偏大","dishes":[{"id":"d2901","name":"猪肝面","price":20,"spicy":0,"kcal":660,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d2902","name":"腰花面","price":24,"spicy":1,"kcal":668,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d2903","name":"三鲜面","price":18,"spicy":0,"kcal":656,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d2904","name":"大排面","price":20,"spicy":0,"kcal":660,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s30","name":"清真兰州拉面","area":"逸盛路·云街侧","distance":650,"price":18,"rating":4.1,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"手动拉面；加肉很值","dishes":[{"id":"d3001","name":"牛肉拉面","price":16,"spicy":0,"kcal":652,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d3002","name":"加肉牛肉面","price":22,"spicy":0,"kcal":664,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3003","name":"大盘鸡拌面","price":28,"spicy":2,"kcal":676,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d3004","name":"手抓羊肉","price":38,"spicy":0,"kcal":614,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3005","name":"羊肉串","price":5,"spicy":0,"kcal":360,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s31","name":"沙县小吃","area":"逸盛路·云街侧","distance":720,"price":15,"rating":3.9,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"穷鬼套餐；出餐快","dishes":[{"id":"d3101","name":"拌面","price":8,"spicy":0,"kcal":636,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d3102","name":"扁肉","price":9,"spicy":0,"kcal":527,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3103","name":"蒸饺","price":9,"spicy":0,"kcal":538,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3104","name":"花生酱拌面","price":10,"spicy":0,"kcal":640,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3105","name":"排骨炖罐","price":12,"spicy":0,"kcal":536,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s32","name":"哈尔滨饺子王","area":"上亿广场·云街侧","distance":640,"price":25,"rating":4,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"现包现煮；锅包肉比饺子还出名","dishes":[{"id":"d3201","name":"酸菜猪肉饺","price":20,"spicy":0,"kcal":560,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d3202","name":"三鲜饺","price":22,"spicy":0,"kcal":564,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3203","name":"锅包肉","price":38,"spicy":0,"kcal":926,"signature":false,"desc":"酸甜挂汁，比饺子还抢手","tags":["家常"]},{"id":"d3204","name":"拍黄瓜","price":12,"spicy":0,"kcal":204,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s33","name":"淮南牛肉汤","area":"打石漾路","distance":700,"price":20,"rating":4,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"汤免费续；烧饼必点","dishes":[{"id":"d3301","name":"牛肉汤","price":15,"spicy":1,"kcal":730,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d3302","name":"牛肉粉丝汤","price":18,"spicy":1,"kcal":616,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d3303","name":"牛杂汤","price":22,"spicy":1,"kcal":744,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d3304","name":"油酥烧饼","price":3,"spicy":0,"kcal":509,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s34","name":"洪亮麻辣烫总店","area":"港虹东路","distance":800,"price":24,"rating":4.2,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"11:00-24:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"自选称重；麻酱可以自己要","dishes":[{"id":"d3401","name":"自选麻辣烫","price":24,"spicy":2,"kcal":572,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d3402","name":"麻酱拌烫菜","price":26,"spicy":1,"kcal":578,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d3403","name":"番茄锅底烫菜","price":26,"spicy":0,"kcal":902,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s35","name":"小张哥烫货","area":"上亿广场·云街侧","distance":660,"price":30,"rating":4,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"烫菜+烤串一体","dishes":[{"id":"d3501","name":"自选烫菜","price":28,"spicy":1,"kcal":584,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d3502","name":"冒菜","price":30,"spicy":2,"kcal":590,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d3503","name":"拌味烫菜","price":26,"spicy":1,"kcal":578,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s36","name":"杨铭宇黄焖鸡米饭","area":"名城博园","distance":880,"price":22,"rating":4,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"一人食刚好；汤泡饭是灵魂","dishes":[{"id":"d3601","name":"黄焖鸡米饭","price":22,"spicy":1,"kcal":724,"signature":true,"desc":"汤汁泡饭是灵魂，一人食刚好","tags":["招牌","微辣"]},{"id":"d3602","name":"黄焖排骨米饭","price":26,"spicy":1,"kcal":732,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d3603","name":"黄焖鸡加土豆","price":24,"spicy":1,"kcal":698,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s37","name":"好多肉汉堡·炸鸡","area":"逸盛路·云街侧","distance":690,"price":18,"rating":3.9,"categoryIds":["fried"],"tags":["探店收录","勾庄"],"emoji":"🍗","color":"#D99A18","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"便宜大份；学生党最爱","dishes":[{"id":"d3701","name":"香辣鸡腿堡","price":12,"spicy":1,"kcal":674,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d3702","name":"双层牛肉堡","price":22,"spicy":0,"kcal":744,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3703","name":"炸鸡桶","price":39,"spicy":0,"kcal":728,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3704","name":"大鸡排","price":12,"spicy":0,"kcal":674,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s38","name":"杜记菜煎饼","area":"逸居城","distance":810,"price":12,"rating":4.1,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"现摊现卷；一个管到下午","dishes":[{"id":"d3801","name":"招牌菜煎饼","price":10,"spicy":0,"kcal":530,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d3802","name":"双蛋煎饼","price":13,"spicy":0,"kcal":539,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3803","name":"里脊煎饼","price":15,"spicy":0,"kcal":545,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s39","name":"帛亿小吃","area":"储运路","distance":830,"price":15,"rating":4,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"早餐到中午都开","dishes":[{"id":"d3901","name":"小笼包","price":12,"spicy":0,"kcal":536,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d3902","name":"生煎","price":12,"spicy":0,"kcal":536,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3903","name":"豆浆","price":4,"spicy":0,"kcal":512,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d3904","name":"咸豆花","price":6,"spicy":0,"kcal":518,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s40","name":"千岛湖人家","area":"港虹东路","distance":790,"price":55,"rating":4.2,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"鱼头现杀；适合三个人以上","dishes":[{"id":"d4001","name":"千岛湖鱼头","price":88,"spicy":1,"kcal":726,"signature":true,"desc":"鱼头拌饭能吃三碗，人多才点得动","tags":["招牌","微辣"]},{"id":"d4002","name":"农家小炒肉","price":38,"spicy":2,"kcal":614,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d4003","name":"笋干烧肉","price":42,"spicy":0,"kcal":626,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4004","name":"土鸡煲","price":98,"spicy":0,"kcal":1096,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4005","name":"手撕包菜","price":22,"spicy":0,"kcal":224,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s41","name":"千岛湖厨房","area":"管家塘新苑","distance":560,"price":85,"rating":4.5,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"米粿是招牌；家常做法不踩雷","dishes":[{"id":"d4101","name":"千岛湖米粿","price":28,"spicy":0,"kcal":584,"signature":true,"desc":"当地做法，米香扎实","tags":["招牌"]},{"id":"d4102","name":"炒粉丝","price":26,"spicy":0,"kcal":632,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4103","name":"鱼头豆腐汤","price":88,"spicy":0,"kcal":726,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4104","name":"农家三宝","price":48,"spicy":0,"kcal":644,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s42","name":"千岛湖土菜馆","area":"金恒路","distance":900,"price":82,"rating":4.3,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"本地人家庭聚餐常来；分量大","dishes":[{"id":"d4201","name":"红烧猪手","price":48,"spicy":0,"kcal":644,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d4202","name":"板栗烧鸡","price":58,"spicy":0,"kcal":766,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4203","name":"千岛湖卤鸭","price":45,"spicy":0,"kcal":635,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4204","name":"爆炒花蛤","price":42,"spicy":1,"kcal":626,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d4205","name":"香辣蟹腿","price":68,"spicy":2,"kcal":556,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d4206","name":"手撕包菜","price":22,"spicy":0,"kcal":224,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s43","name":"柒加海鲜姿造","area":"水产市场3楼","distance":950,"price":205,"rating":4.6,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"11:00-14:00 / 17:00-21:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"楼下就是水产市场；海鲜现捞现涮；贵但真新鲜","dishes":[{"id":"d4301","name":"椒盐帝王蟹","price":398,"spicy":0,"kcal":1216,"signature":true,"desc":"楼下水产市场现捞，398一斤称重","tags":["招牌"]},{"id":"d4302","name":"三文鱼刺身","price":68,"spicy":0,"kcal":686,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4303","name":"象拔蚌","price":128,"spicy":0,"kcal":884,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4304","name":"雪花和牛","price":88,"spicy":0,"kcal":876,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4305","name":"毛肚","price":48,"spicy":0,"kcal":644,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4306","name":"国宴油条","price":28,"spicy":0,"kcal":584,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s44","name":"小家常","area":"逸盛路·云街侧","distance":856,"price":50,"rating":4.1,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"小炒锅气足","dishes":[{"id":"d4401","name":"小炒黄牛肉","price":48,"spicy":2,"kcal":796,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d4402","name":"汽锅鱼头","price":68,"spicy":1,"kcal":986,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d4403","name":"农家小炒肉","price":32,"spicy":2,"kcal":596,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]}]},{"id":"s45","name":"小胡子音乐烤吧","area":"滨河美食广场","distance":622,"price":60,"rating":3.9,"categoryIds":["bbq"],"tags":["探店收录","勾庄"],"emoji":"🍢","color":"#17A9A2","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"晚上有驻唱；烤鱼现杀","dishes":[{"id":"d4501","name":"烤草鱼","price":68,"spicy":2,"kcal":686,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d4502","name":"烤羊肉串","price":5,"spicy":1,"kcal":360,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d4503","name":"烤茄子","price":18,"spicy":0,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4504","name":"烤生蚝","price":10,"spicy":0,"kcal":280,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s46","name":"梁大生蚝王·羊蝎子","area":"滨河美食广场","distance":561,"price":85,"rating":4,"categoryIds":["bbq"],"tags":["探店收录","勾庄"],"emoji":"🍢","color":"#17A9A2","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"高压锅生蚝必点；夜宵场","dishes":[{"id":"d4601","name":"高压锅生蚝","price":68,"spicy":0,"kcal":986,"signature":true,"desc":"一锅端上来还在冒气，撬开就是海味","tags":["招牌"]},{"id":"d4602","name":"羊蝎子锅","price":128,"spicy":2,"kcal":1106,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d4603","name":"酸菜鱼","price":58,"spicy":1,"kcal":666,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s47","name":"熹记土菜馆","area":"逸盛路·云街侧","distance":587,"price":100,"rating":4.2,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"甲鱼是招牌；商务局也能撑住","dishes":[{"id":"d4701","name":"十五年陈皮烧甲鱼","price":188,"spicy":0,"kcal":926,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d4702","name":"白辣椒小炒肉","price":42,"spicy":2,"kcal":626,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d4703","name":"老鸭煲","price":118,"spicy":0,"kcal":1136,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s48","name":"麻麻鸭衢州鸭头","area":"逸盛路·云街侧","distance":730,"price":20,"rating":4,"categoryIds":["bbq"],"tags":["探店收录","勾庄"],"emoji":"🍢","color":"#17A9A2","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"按个卖；辣度可选","dishes":[{"id":"d4801","name":"衢州鸭头","price":6,"spicy":2,"kcal":518,"signature":true,"desc":"按个卖，辣度可调，啃起来费时间但很值","tags":["招牌","重辣"]},{"id":"d4802","name":"卤鸭掌","price":5,"spicy":1,"kcal":515,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d4803","name":"鸭脖","price":12,"spicy":2,"kcal":536,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d4804","name":"卤鸭翅","price":8,"spicy":1,"kcal":524,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]}]},{"id":"s49","name":"留夫鸭","area":"逸盛路·云街侧","distance":745,"price":30,"rating":4.1,"categoryIds":["bbq"],"tags":["探店收录","勾庄"],"emoji":"🍢","color":"#17A9A2","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"卤味打包回办公室","dishes":[{"id":"d4901","name":"卤鸭腿","price":15,"spicy":1,"kcal":545,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d4902","name":"卤鸭胗","price":20,"spicy":1,"kcal":560,"signature":false,"desc":"点评菜单收录的人气菜","tags":["微辣"]},{"id":"d4903","name":"卤豆干","price":6,"spicy":0,"kcal":518,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d4904","name":"卤鸭脖","price":18,"spicy":2,"kcal":554,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]}]},{"id":"s50","name":"绝味鸭脖","area":"北宸之光","distance":325,"price":25,"rating":4.3,"categoryIds":["bbq"],"tags":["探店收录","勾庄"],"emoji":"🍢","color":"#17A9A2","hours":"10:00-23:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"追剧神器；辣度高","dishes":[{"id":"d5001","name":"招牌鸭脖","price":20,"spicy":2,"kcal":560,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","重辣"]},{"id":"d5002","name":"招牌鸭头","price":8,"spicy":2,"kcal":524,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]},{"id":"d5003","name":"鸭锁骨","price":15,"spicy":2,"kcal":545,"signature":false,"desc":"点评菜单收录的人气菜","tags":["重辣"]}]},{"id":"s51","name":"老张记面馆","area":"盛德国际·泊寓楼下","distance":90,"price":14,"rating":4.3,"categoryIds":["noodle"],"tags":["探店收录","勾庄"],"emoji":"🍜","color":"#FF7A3D","hours":"08:00-22:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"楼下最近的一家；8点就开门","dishes":[{"id":"d5101","name":"牛肉面","price":14,"spicy":0,"kcal":648,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d5102","name":"大排面","price":13,"spicy":0,"kcal":646,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5103","name":"雪菜肉丝面","price":12,"spicy":0,"kcal":644,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5104","name":"猪肝面","price":15,"spicy":0,"kcal":650,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s52","name":"逍遥汤府·张迎芸小吃店","area":"通运街·泊寓侧","distance":990,"price":21,"rating":4.1,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"早餐-14:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"煎包酥脆软韧；胡辣汤配煎包","dishes":[{"id":"d5201","name":"胡辣汤","price":8,"spicy":1,"kcal":524,"signature":true,"desc":"胡椒味冲，配水煎包是河南早饭标准配置","tags":["招牌","微辣"]},{"id":"d5202","name":"水煎包","price":6,"spicy":0,"kcal":518,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5203","name":"油条","price":3,"spicy":0,"kcal":509,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5204","name":"豆腐脑","price":6,"spicy":0,"kcal":192,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s53","name":"印小馆·匠心江南味","area":"通运街·泊寓侧","distance":849,"price":91,"rating":4.3,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"烤鸭现片；环境适合请客","dishes":[{"id":"d5301","name":"招牌烤鸭","price":98,"spicy":0,"kcal":794,"signature":true,"desc":"现片现上，皮脆得一咬有声音","tags":["招牌"]},{"id":"d5302","name":"海皇八宝豆腐","price":48,"spicy":0,"kcal":276,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5303","name":"龙井虾仁","price":88,"spicy":0,"kcal":764,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s54","name":"舟村砂锅焗海鲜","area":"通运街·泊寓侧","distance":475,"price":88,"rating":4.2,"categoryIds":["soup"],"tags":["探店收录","勾庄"],"emoji":"🍲","color":"#8A5CD6","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"砂锅焗出来更香；鸦片鱼头限量","dishes":[{"id":"d5401","name":"鸦片鱼头","price":78,"spicy":1,"kcal":706,"signature":true,"desc":"砂锅焗出来比清蒸香，限量","tags":["招牌","微辣"]},{"id":"d5402","name":"砂锅焗花蛤","price":48,"spicy":0,"kcal":946,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5403","name":"海鲜炒方便面","price":38,"spicy":0,"kcal":696,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s55","name":"天天臻味馆·萧山土菜","area":"通运街·泊寓侧","distance":877,"price":78,"rating":4.2,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"萧山口味偏咸鲜；菜量实在","dishes":[{"id":"d5501","name":"红烧千岛湖鱼头","price":88,"spicy":1,"kcal":726,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d5502","name":"红烧土猪肉","price":58,"spicy":0,"kcal":674,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5503","name":"梅干菜扣肉","price":42,"spicy":0,"kcal":626,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s56","name":"华莱士·全鸡汉堡","area":"德悦广场","distance":100,"price":16,"rating":3.7,"categoryIds":["fried"],"tags":["探店收录","勾庄"],"emoji":"🍗","color":"#D99A18","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"便宜；出餐快","dishes":[{"id":"d5601","name":"香辣鸡腿堡","price":10,"spicy":1,"kcal":670,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d5602","name":"香辣鸡排堡","price":12,"spicy":0,"kcal":674,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5603","name":"全鸡","price":29,"spicy":0,"kcal":708,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s57","name":"正新鸡排","area":"瑷颐湾","distance":899,"price":17,"rating":3.9,"categoryIds":["fried"],"tags":["探店收录","勾庄"],"emoji":"🍗","color":"#D99A18","hours":"以门店为准","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"现炸；撒料可选","dishes":[{"id":"d5701","name":"孜然大鸡排","price":15,"spicy":1,"kcal":680,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌","微辣"]},{"id":"d5702","name":"甘梅鸡排","price":15,"spicy":0,"kcal":680,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5703","name":"鸡米花","price":10,"spicy":0,"kcal":670,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]},{"id":"s58","name":"一鸣真鲜奶吧","area":"北宸之光","distance":236,"price":15,"rating":4.2,"categoryIds":["rice"],"tags":["探店收录","勾庄"],"emoji":"🍚","color":"#E8A317","hours":"07:00-21:00","queue":"饭点人多，建议早到","seats":"堂食 · 以门店为准","note":"赶时间就买饭团；7点开门","dishes":[{"id":"d5801","name":"芝芝脆脆鸡大口饭团","price":9,"spicy":0,"kcal":698,"signature":true,"desc":"携程点评收录的招牌菜","tags":["招牌"]},{"id":"d5802","name":"法式三明治","price":12,"spicy":0,"kcal":536,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]},{"id":"d5803","name":"鲜奶","price":5,"spicy":0,"kcal":515,"signature":false,"desc":"点评菜单收录的人气菜","tags":["家常"]}]}];
+const SPICY_TEXT = ['不辣','微辣','中辣','重辣'];
+
+/* ====== 工具 ====== */
+const $ = id => document.getElementById(id);
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem('lunch.'+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('lunch.'+k, JSON.stringify(v)); }catch(e){} }
+};
+const catById = {};
+CATS.forEach(c => catById[c.id] = c);
+
+const IS_WX = /MicroMessenger/i.test(navigator.userAgent || '');
+const IS_MOBILE = /Android|iPhone|iPad|iPod|HarmonyOS|Mobile/i.test(navigator.userAgent || '');
+
+function shuffle(a){
+  const arr = a.slice();
+  for(let i = arr.length-1; i > 0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function distText(m){
+  if(!m && m !== 0) return '—';
+  return m < 1000 ? m + 'm' : (m/1000).toFixed(1) + 'km';
+}
+function money(n){ return n ? '¥' + n : ''; }
+
+/* ====== 音效（WebAudio 现场合成，零外部资源） ====== */
+let AC = null;
+let soundOn = LS.get('sound', true);
+function ac(){
+  if (!AC){
+    try{
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (C) AC = new C();
+    }catch(e){ AC = null; }
+  }
+  return AC;
+}
+function blip(freq, dur, vol, type){
+  if (!soundOn) return;
+  const a = ac();
+  if (!a) return;
+  if (a.state === 'suspended'){ try{ a.resume(); }catch(e){} }
+  try{
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = type || 'triangle';
+    o.frequency.value = freq;
+    const t = a.currentTime;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol || 0.06, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }catch(e){}
+}
+/* 转盘经过格子的「咔哒」 */
+function tickSound(){ blip(1180 + Math.random() * 140, 0.026, 0.045, 'square'); }
+/* 停下时的「叮——」 */
+function dingSound(){
+  blip(784, 0.55, 0.075, 'sine');
+  setTimeout(() => blip(1175, 0.6, 0.055, 'sine'), 65);
+  setTimeout(() => blip(1568, 0.75, 0.035, 'sine'), 130);
+}
+/* 点选反馈 */
+function popSound(){ blip(620, 0.09, 0.04, 'sine'); }
+function shake(ms){
+  try{ if (navigator.vibrate) navigator.vibrate(ms || 10); }catch(e){}
+}
+function renderSnd(){
+  const b = $('sndBtn');
+  b.textContent = soundOn ? '🔊' : '🔇';
+  b.className = 'snd' + (soundOn ? '' : ' off');
+}
+
+/* ====== 数据组装 ====== */
+let customShops = LS.get('custom', []);
+let excludedIds = LS.get('excluded', []);
+
+function allShops(){
+  return RAW_SHOPS.concat(customShops.map(c => ({
+    id: c.id, name: c.name, area: c.area || '', distance: 200,
+    price: c.price || 0, rating: 0, categoryIds: c.categoryIds || ['rice'],
+    emoji: c.emoji || '🍚', color: c.color || '#E8A317', tags: ['我的店'],
+    dishes: c.dishes
+  })));
+}
+
+let DISHES = [];
+function rebuildDishes(){
+  DISHES = [];
+  allShops().forEach(s => {
+    (s.dishes || []).forEach(d => {
+      const cid = (s.categoryIds && s.categoryIds[0]) || 'rice';
+      const cat = catById[cid] || CATS[0];
+      DISHES.push({
+        id: d.id, name: d.name, price: d.price, spicy: d.spicy || 0, kcal: d.kcal || 600,
+        signature: !!d.signature, desc: d.desc || '',
+        shopId: s.id, shopName: s.name, area: s.area || '', distance: s.distance || 0,
+        catId: cid, catName: cat.name, emoji: s.emoji || cat.emoji,
+        soft: cat.soft || '#FFE9BC', color: cat.color || '#E8A317',
+        shopEmoji: s.emoji || cat.emoji
+      });
+    });
+  });
+}
+rebuildDishes();
+
+/* ====== 心情筛选 ====== */
+const MOODS = [
+  { id:'all',   ico:'🎲', name:'随便',   sub:'全部' },
+  { id:'spicy', ico:'🌶', name:'想吃辣', sub:'中辣以上' },
+  { id:'light', ico:'🥗', name:'清淡点', sub:'不辣不炸' },
+  { id:'carb',  ico:'🍜', name:'面或饭', sub:'碳水续命' },
+  { id:'cheap', ico:'💰', name:'省钱',   sub:'22 元内' },
+  { id:'nice',  ico:'✨', name:'吃好的', sub:'30 元以上' }
+];
+let mood = LS.get('mood', 'all');
+if (!MOODS.some(m => m.id === mood)) mood = 'all';
+
+function moodMatch(d){
+  switch (mood){
+    case 'spicy': return (d.spicy || 0) >= 2;
+    case 'light': return (d.spicy || 0) === 0 && (d.kcal || 600) <= 720 && d.catId !== 'fried';
+    case 'carb':  return d.catId === 'noodle' || d.catId === 'rice' || d.catId === 'soup';
+    case 'cheap': return (d.price || 0) > 0 && d.price <= 22;
+    case 'nice':  return (d.price || 0) >= 30 || (!!d.signature && (d.price || 0) >= 25);
+    default: return true;
+  }
+}
+
+/* 上盘池：过滤掉饮料小料（非招牌且 <15 元），再按心情筛 */
+function pool(){
+  return DISHES.filter(d => excludedIds.indexOf(d.id) < 0
+    && (d.signature || d.price >= 15)
+    && moodMatch(d));
+}
+
+function renderMoods(){
+  $('moods').innerHTML = MOODS.map(m =>
+    '<button class="mood' + (mood === m.id ? ' on' : '') + '" data-mood="' + m.id + '">' +
+    m.ico + ' ' + m.name + '</button>').join('');
+  updateMoodLab();
+}
+function updateMoodLab(){
+  const cur = MOODS.filter(m => m.id === mood)[0];
+  $('moodLab').textContent = (cur && mood !== 'all')
+    ? '今天' + cur.name + ' · ' + cur.sub + ' · 池子里还剩 ' + pool().length + ' 道'
+    : '今天什么心情';
+}
+
+/* 12 格：店铺随机排序 + 每店随机一道（65% 概率是招牌），保证全池都能轮到 */
+function wheelDishes(n){
+  n = n || 12;
+  const byShop = {};
+  pool().forEach(d => { (byShop[d.shopId] = byShop[d.shopId] || []).push(d); });
+  const ids = shuffle(Object.keys(byShop));
+  const picked = [];
+  for(let i = 0; i < ids.length && picked.length < n; i++){
+    const list = byShop[ids[i]];
+    const sigs = list.filter(d => d.signature);
+    let d;
+    if(sigs.length && Math.random() < 0.65){
+      d = sigs[Math.floor(Math.random()*sigs.length)];
+    } else {
+      d = list[Math.floor(Math.random()*list.length)];
+    }
+    picked.push(d);
+  }
+  return shuffle(picked);
+}
+
+/* ====== 画盘 ====== */
+const canvas = $('wheel');
+const ctx = canvas.getContext('2d');
+let slices = [];
+let currentRot = 0;
+let spinning = false;
+let R = 160;
+
+function fitText(text, maxW){
+  let size = 12.5;
+  ctx.font = '700 ' + size + 'px -apple-system,"PingFang SC",sans-serif';
+  while(ctx.measureText(text).width > maxW && size > 8.5){
+    size -= .5;
+    ctx.font = '700 ' + size + 'px -apple-system,"PingFang SC",sans-serif';
+  }
+  return size;
+}
+function ellipsis(text, n){
+  return text.length > n ? text.slice(0, n - 1) + '…' : text;
+}
+
+function resize(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  R = rect.width / 2;
+  draw(currentRot);
+}
+
+function draw(rot){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const cx = w/2, cy = h/2;
+  const r = Math.min(w, h)/2 - 1;
+  ctx.clearRect(0, 0, w, h);
+  const n = Math.max(slices.length, 1);
+  const seg = Math.PI*2/n;
+
+  for(let i = 0; i < slices.length; i++){
+    const d = slices[i];
+    const a0 = -Math.PI/2 + rot + i*seg;
+    const a1 = a0 + seg;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, a0, a1);
+    ctx.closePath();
+    ctx.fillStyle = d.soft;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.85)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // 文字（切向排布，指针停下时那一格是水平的）
+    const mid = a0 + seg/2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(mid + Math.PI/2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const arcW = 2 * (r - 34) * Math.sin(seg/2) * 0.92;
+    const nm = ellipsis(d.name, 7);
+    const size = fitText(nm, arcW);
+    ctx.fillStyle = '#3A2A1E';
+    ctx.font = '700 ' + size + 'px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillText(nm, 0, -(r - 24));
+
+    ctx.fillStyle = 'rgba(80,55,35,.62)';
+    ctx.font = '600 8px -apple-system,"PingFang SC",sans-serif';
+    const sub = ellipsis(d.shopName, 5) + (d.price ? ' ¥' + d.price : '');
+    ctx.fillText(sub, 0, -(r - 24) + 14);
+
+    ctx.font = '11px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillText(d.shopEmoji || '', 0, -(r - 58));
+    ctx.restore();
+  }
+
+  // 中心遮罩圈
+  ctx.beginPath();
+  ctx.arc(cx, cy, 47, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,.96)';
+  ctx.fill();
+}
+
+/* ====== 转盘动画 ====== */
+const HUB_SUBS = ['点我', '别看手机了', '交给天意', '闭眼按', '别犹豫了', '今天该决断了'];
+function spin(){
+  if(spinning) return;
+  if(!slices.length){ rebuild(); return; }
+  spinning = true;
+  const hub = $('hub');
+  hub.classList.add('busy');
+  $('hubGo').textContent = '···';
+  $('hubSub').textContent = '转着呢';
+
+  const n = slices.length, seg = Math.PI*2/n;
+  const target = Math.floor(Math.random()*n);
+  const jitter = (Math.random() - 0.5) * seg * 0.5;
+  const base = -(target*seg + seg/2) + jitter;
+
+  const start = currentRot;
+  let final = base;
+  while(final < start + Math.PI*2) final += Math.PI*2;
+  final += Math.PI*2 * 5;
+
+  const dur = 4200 + Math.random()*500;
+  const t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 4);
+
+  /* 转过的格子数变化时「咔哒」一声，越接近停下越疏 */
+  let lastIdx = Math.floor(currentRot / seg);
+  let lastTickAt = 0;
+  ac(); // 在手势里初始化音频上下文（iOS 要求）
+
+  function frame(now){
+    const t = Math.min(1, (now - t0)/dur);
+    currentRot = start + (final - start)*ease(t);
+    draw(currentRot);
+
+    const idx = Math.floor(currentRot / seg);
+    if(idx !== lastIdx){
+      lastIdx = idx;
+      if(now - lastTickAt > 24){ lastTickAt = now; tickSound(); }
+    }
+
+    if(t < 1){ requestAnimationFrame(frame); }
+    else {
+      spinning = false;
+      hub.classList.remove('busy');
+      $('hubGo').textContent = 'GO';
+      $('hubSub').textContent = HUB_SUBS[Math.floor(Math.random()*HUB_SUBS.length)];
+      dingSound();
+      shake(30);
+      const picked = slices[target];
+      if(picked) showResult(picked);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ====== 结果 ====== */
+let current = null;
+
+function showResult(d){
+  current = d;
+  $('resFrom').textContent = '转盘落在';
+  $('resEmoji').textContent = d.dishEmoji || d.emoji || '🍽';
+  $('resName').textContent = d.name;
+  $('resShop').textContent = '🏪 ' + d.shopName;
+  $('resAddr').textContent = d.area ? '📍 ' + d.area : '📍 地址以门店为准';
+  $('mDist').textContent = distText(d.distance);
+  $('mSpicy').textContent = SPICY_TEXT[d.spicy] || '不辣';
+  $('mKcal').textContent = d.kcal + '';
+
+  let chips = '';
+  if(d.price) chips += '<span class="chip price">¥' + d.price + '</span>';
+  if(d.signature) chips += '<span class="chip sig">招牌</span>';
+  chips += '<span class="chip plain">' + d.catName + '</span>';
+  $('resChips').innerHTML = chips;
+
+  const lines = [
+    '转盘不会骗人，但你的胃可能会后悔。',
+    '都转到这儿了，再犹豫就真晚了。',
+    '这家离你 ' + distText(d.distance) + '，走过去刚好消食。',
+    '今天的答案已经出现了，别再刷外卖软件了。'
+  ];
+  $('resLine').textContent = lines[Math.floor(Math.random()*lines.length)];
+
+  // 备选：同店其他菜优先
+  const alts = shuffle(DISHES.filter(x => x.id !== d.id && x.shopId === d.shopId && !(x.price < 15 && !x.signature)))
+    .slice(0, 2)
+    .concat(shuffle(DISHES.filter(x => x.id !== d.id && x.catId === d.catId)).slice(0, 1))
+    .slice(0, 3);
+  $('resAlts').innerHTML = alts.length
+    ? '<div class="rd-label">实在不想吃？换这些</div>' + alts.map(a =>
+        '<div class="rd" data-alt="' + a.id + '"><span class="rn">' + a.name +
+        '</span><span class="rs">' + a.shopName + (a.price ? ' · ¥' + a.price : '') + '</span></div>').join('')
+    : '';
+
+  openSheet('sheet');
+  bumpSpin();
+}
+
+/* ====== 今日饭签（canvas 生成图片，微信里长按直接转） ====== */
+const JI = ['忌再刷外卖','忌看同事吃啥','忌临到饭点才想','忌反悔','忌饿着开会',
+            '忌点第二份','忌说“随便”','忌挑剔','忌吃完就困','忌假装在减肥'];
+function hashOf(s){
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h*31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function fortuneOf(d){
+  const yi = [];
+  if ((d.spicy || 0) >= 2) yi.push('宜出汗');
+  else if ((d.spicy || 0) === 0) yi.push('宜养胃');
+  if (d.catId === 'noodle') yi.push('宜吸面');
+  else if (d.catId === 'rice') yi.push('宜扒饭');
+  else if (d.catId === 'soup') yi.push('宜喝汤');
+  else if (d.catId === 'fried') yi.push('宜放肆');
+  else if (d.catId === 'light') yi.push('宜轻一点');
+  else if (d.catId === 'bbq') yi.push('宜撸串');
+  if ((d.price || 0) > 0 && d.price <= 20) yi.push('宜省钱');
+  if ((d.price || 0) >= 40) yi.push('宜对自己好');
+  if (d.signature) yi.push('宜信招牌');
+  if ((d.distance || 0) > 0 && d.distance < 400) yi.push('宜走两步');
+  const fallback = ['宜大口吃', '宜不纠结', '宜马上出发'];
+  let k = 0;
+  while (yi.length < 2) yi.push(fallback[k++ % fallback.length]);
+  const h = hashOf(d.id + (d.name || ''));
+  return {
+    yi: yi.slice(0, 2),
+    ji: JI[h % JI.length],
+    stars: 3 + (h % 3),           // 3~5
+    luck: 60 + (h % 40)           // 60~99
+  };
+}
+function roundRect(c, x, y, w, h, r){
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+function fitCanvasText(c, text, maxW, start, weight){
+  let s = start;
+  while (s > 20){
+    c.font = (weight || '800') + ' ' + s + 'px -apple-system,"PingFang SC","Hiragino Sans GB",sans-serif';
+    if (c.measureText(text).width <= maxW) break;
+    s -= 2;
+  }
+  return s;
+}
+function drawSign(d){
+  const W = 750, H = 1060;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  const FONT = '"PingFang SC","Hiragino Sans GB",-apple-system,sans-serif';
+
+  /* 背景 */
+  const bg = c.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#FFFAF4');
+  bg.addColorStop(.5, '#FFF2E3');
+  bg.addColorStop(1, '#FFE4C8');
+  c.fillStyle = bg;
+  c.fillRect(0, 0, W, H);
+
+  const g1 = c.createRadialGradient(90, 60, 0, 90, 60, 340);
+  g1.addColorStop(0, 'rgba(255,160,90,.26)'); g1.addColorStop(1, 'rgba(255,160,90,0)');
+  c.fillStyle = g1; c.fillRect(0, 0, W, 420);
+  const g2 = c.createRadialGradient(W - 60, H - 100, 0, W - 60, H - 100, 380);
+  g2.addColorStop(0, 'rgba(255,200,120,.30)'); g2.addColorStop(1, 'rgba(255,200,120,0)');
+  c.fillStyle = g2; c.fillRect(0, H - 460, W, 460);
+
+  c.textAlign = 'center';
+
+  /* 头部 */
+  c.fillStyle = '#C79A6E';
+  c.font = '700 19px ' + FONT;
+  c.fillText('L U N C H   L O T T E R Y', W/2, 78);
+
+  c.fillStyle = '#2B1D14';
+  c.font = '800 52px ' + FONT;
+  c.fillText('今日饭签', W/2, 150);
+
+  const DOW = ['周日','周一','周二','周三','周四','周五','周六'];
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = now.getFullYear() + '.' + pad(now.getMonth()+1) + '.' + pad(now.getDate()) + ' ' + DOW[now.getDay()];
+  c.fillStyle = '#B08A6C';
+  c.font = '500 22px ' + FONT;
+  c.fillText(dateStr + ' · 第 ' + (spinCount + 1) + ' 次交给天意', W/2, 192);
+
+  /* 主卡片 */
+  c.save();
+  c.shadowColor = 'rgba(190,120,60,.22)';
+  c.shadowBlur = 34;
+  c.shadowOffsetY = 14;
+  const cardG = c.createLinearGradient(60, 230, 690, 660);
+  cardG.addColorStop(0, '#FFFFFF');
+  cardG.addColorStop(1, '#FFF8EF');
+  c.fillStyle = cardG;
+  roundRect(c, 54, 232, 642, 430, 34);
+  c.fill();
+  c.restore();
+
+  /* emoji */
+  c.font = '86px ' + FONT;
+  c.fillText(d.emoji || d.shopEmoji || '🍽', W/2, 344);
+
+  /* 菜名 */
+  const nm = d.name || '';
+  const nsize = fitCanvasText(c, nm, 540, 62, '800');
+  c.fillStyle = '#2B1D14';
+  c.font = '800 ' + nsize + 'px ' + FONT;
+  c.fillText(nm, W/2, 434);
+
+  /* 店名 + 地址 */
+  c.fillStyle = '#8A7566';
+  c.font = '600 26px ' + FONT;
+  c.fillText('🏪 ' + (d.shopName || ''), W/2, 482);
+  c.fillStyle = '#B08D6E';
+  c.font = '400 21px ' + FONT;
+  c.fillText('📍 ' + (d.area || '地址以门店为准'), W/2, 518);
+
+  /* 分隔 */
+  c.save();
+  c.strokeStyle = '#F2DFC9';
+  c.lineWidth = 2;
+  c.setLineDash([7, 8]);
+  c.beginPath(); c.moveTo(110, 552); c.lineTo(640, 552); c.stroke();
+  c.restore();
+
+  /* 三指标 */
+  const cols = [
+    { n: distText(d.distance), l: '距离' },
+    { n: (SPICY_TEXT[d.spicy] || '不辣'), l: '辣度' },
+    { n: (d.kcal || '—') + '', l: '千卡' }
+  ];
+  cols.forEach((col, i) => {
+    const cx = 200 + i * 175;
+    c.fillStyle = '#2B1D14';
+    c.font = '800 30px ' + FONT;
+    c.fillText(col.n, cx, 604);
+    c.fillStyle = '#B4A091';
+    c.font = '400 17px ' + FONT;
+    c.fillText(col.l, cx, 632);
+  });
+
+  /* 价格角标 */
+  if (d.price){
+    c.save();
+    c.fillStyle = '#FF6B2C';
+    roundRect(c, 592, 262, 82, 46, 23);
+    c.fill();
+    c.fillStyle = '#fff';
+    c.font = '800 25px ' + FONT;
+    c.textAlign = 'center';
+    c.fillText('¥' + d.price, 633, 294);
+    c.restore();
+  }
+
+  /* 签文 */
+  const f = fortuneOf(d);
+  c.textAlign = 'left';
+
+  c.fillStyle = '#2B1D14';
+  c.font = '800 44px ' + FONT;
+  c.fillText('宜', 92, 772);
+  c.fillStyle = '#B4632A';
+  c.font = '800 44px ' + FONT;
+  c.fillText(f.yi[0], 152, 772);
+  c.fillStyle = '#8A7566';
+  c.font = '600 34px ' + FONT;
+  c.fillText('·', 152 + c.measureText(f.yi[0]).width + 26, 772);
+  c.fillStyle = '#2B1D14';
+  c.font = '800 44px ' + FONT;
+  c.fillText(f.yi[1], 152 + c.measureText(f.yi[0]).width + 58, 772);
+
+  c.fillStyle = '#2B1D14';
+  c.font = '800 44px ' + FONT;
+  c.fillText('忌', 92, 844);
+  c.fillStyle = '#7A6552';
+  c.font = '700 40px ' + FONT;
+  c.fillText(f.ji.replace(/^忌/, ''), 152, 844);
+
+  /* 幸运指数 */
+  c.textAlign = 'center';
+  c.fillStyle = '#C79A6E';
+  c.font = '600 20px ' + FONT;
+  c.fillText('今日幸运指数 ' + f.luck, W/2, 912);
+  c.fillStyle = '#FFB63D';
+  c.font = '30px ' + FONT;
+  let stars = '';
+  for (let i = 0; i < 5; i++) stars += i < f.stars ? '★' : '☆';
+  c.fillText(stars, W/2, 954);
+
+  /* 页脚 */
+  c.fillStyle = '#C9AC91';
+  c.font = '600 19px ' + FONT;
+  c.fillText('中午吃啥 · 尚坤云街A座 / 泊寓北宸', W/2, 1010);
+  c.fillStyle = '#D6BDA6';
+  c.font = '400 17px ' + FONT;
+  c.fillText('转盘替你决定，别再想了', W/2, 1038);
+
+  return cv.toDataURL('image/png');
+}
+
+function openSign(){
+  if (!current) return;
+  popSound();
+  try{
+    $('signImg').src = drawSign(current);
+    $('signTip').textContent = IS_WX
+      ? '长按图片 → 保存 / 发给同事'
+      : '长按图片保存，或点「存图」';
+    $('sign').classList.add('on');
+  }catch(e){
+    toast('这张图没生成出来，换个浏览器试试');
+  }
+}
+
+function openSheet(id){
+  $('mask').classList.add('on');
+  $(id).classList.add('on');
+}
+function closeSheets(){
+  ['sheet','exSheet','mySheet'].forEach(id => $(id).classList.remove('on'));
+  $('mask').classList.remove('on');
+}
+
+let spinCount = LS.get('spins', 0);
+function bumpSpin(){
+  spinCount++;
+  LS.set('spins', spinCount);
+  $('cnt').textContent = spinCount;
+  $('counter').style.display = 'block';
+}
+
+function record(d){
+  const recent = LS.get('recent', []);
+  const now = new Date();
+  recent.unshift({
+    id: d.id + '-' + now.getTime(), dishName: d.name, shopName: d.shopName,
+    timeText: (now.getMonth()+1) + '/' + now.getDate() + ' ' +
+      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0')
+  });
+  LS.set('recent', recent.slice(0, 6));
+  renderRecent();
+}
+function renderRecent(){
+  const recent = LS.get('recent', []);
+  $('recentWrap').style.display = recent.length ? 'block' : 'none';
+  $('recentList').innerHTML = recent.map(r =>
+    '<div class="r-item"><span class="n">' + r.dishName + '</span><span class="m">' +
+    (r.shopName || '') + ' · ' + r.timeText + '</span></div>').join('');
+}
+
+/* ====== 重排盘面 ====== */
+function rebuild(animate){
+  slices = wheelDishes(12);
+  draw(currentRot);
+  renderExcludedBar();
+  $('poolNum').textContent = pool().length;
+  updateMoodLab();
+}
+
+function renderExcludedBar(){
+  const bar = $('excludedBar');
+  const list = DISHES.filter(d => excludedIds.indexOf(d.id) >= 0);
+  if(!list.length){ bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = '<span class="lab">已排除 ' + list.length + '</span>' +
+    list.slice(0, 4).map(d => '<span class="ex-chip">' + d.name + '</span>').join('') +
+    (list.length > 4 ? '<span class="ex-chip">+' + (list.length-4) + '</span>' : '') +
+    '<span class="ex-reset" id="exClear">全部恢复</span>';
+  $('exClear').onclick = () => {
+    excludedIds = [];
+    LS.set('excluded', excludedIds);
+    rebuild();
+    renderExPanel();
+    toast('都恢复了');
+  };
+}
+
+/* ====== 排除法 ====== */
+let exCat = 'all';
+function renderExPanel(){
+  const cats = ['all'].concat(CATS.map(c => c.id));
+  $('exCats').innerHTML = cats.map(id => {
+    const name = id === 'all' ? '全部' : (catById[id] ? catById[id].name : id);
+    return '<button class="ex-cat' + (exCat === id ? ' on' : '') + '" data-cat="' + id + '">' + name + '</button>';
+  }).join('');
+
+  const list = DISHES.filter(d => exCat === 'all' || d.catId === exCat);
+  $('exCount').textContent = '已排除 ' + excludedIds.length + ' / 剩 ' + pool().length + ' 道';
+  $('exList').innerHTML = list.length ? list.map(d => {
+    const out = excludedIds.indexOf(d.id) >= 0;
+    return '<div class="ex-row' + (out ? ' out' : '') + '" data-dish="' + d.id + '">' +
+      '<div class="box">' + (out ? '✓' : '') + '</div>' +
+      '<span class="nm">' + d.name + '</span>' +
+      '<span class="meta">' + d.shopName + (d.price ? ' · ¥' + d.price : '') + '</span></div>';
+  }).join('') : '<div class="ex-empty">这一类没有菜，换一个看看</div>';
+}
+
+/* ====== 长按抽签 ====== */
+let quickTimer = null, quickLocked = null;
+function openQuick(){
+  $('quick').style.display = 'flex';
+  $('quickLabel').textContent = '长按这个屏幕';
+  $('quickText').textContent = '按住不放';
+  $('quickText').className = 'quick-text';
+  $('quickHint').style.display = 'block';
+  $('quickActions').style.display = 'none';
+  quickLocked = null;
+}
+function quickStart(e){
+  if(quickLocked) return;
+  if(e && e.target && e.target.closest && e.target.closest('button, .quick-close')) return;
+  if(quickTimer) return;
+  const p = pool();
+  if(!p.length) return;
+  $('quickLabel').textContent = '别松手…';
+  $('quickText').className = 'quick-text rolling';
+  $('quickHint').style.display = 'none';
+  quickTimer = setInterval(() => {
+    const d = p[Math.floor(Math.random()*p.length)];
+    quickLocked = d;
+    $('quickText').textContent = d.name;
+  }, 62);
+}
+function quickEnd(){
+  if(!quickTimer) return;
+  clearInterval(quickTimer);
+  quickTimer = null;
+  if(!quickLocked) return;
+  $('quickLabel').textContent = '结果出来了';
+  $('quickText').className = 'quick-text locked';
+  $('quickActions').style.display = 'flex';
+}
+function closeQuick(){
+  if(quickTimer){ clearInterval(quickTimer); quickTimer = null; }
+  $('quick').style.display = 'none';
+}
+
+/* ====== 我的店 ====== */
+function renderMy(){
+  $('myList').innerHTML = customShops.length
+    ? customShops.map(c => '<div class="myrow"><span class="mn">' + c.name + '</span>' +
+        '<span class="ma">' + (c.dishes[0] ? c.dishes[0].name : '') + ' · ¥' + (c.dishes[0] ? c.dishes[0].price : 0) +
+        '</span><span class="del" data-del="' + c.id + '">删除</span></div>').join('')
+    : '<div class="ex-empty">还没加过，空着也行</div>';
+}
+
+function addShop(){
+  const name = $('fShop').value.trim();
+  const dish = $('fDish').value.trim();
+  const price = Number($('fPrice').value) || 0;
+  const area = $('fArea').value.trim();
+  if(!name || !dish){ toast('店名和菜名都填一下'); return; }
+  const id = 'c' + Date.now();
+  customShops.push({
+    id: id, name: name, area: area, price: price,
+    categoryIds: ['rice'], emoji: '🍚', color: '#E8A317',
+    dishes: [{ id: id + 'd1', name: dish, price: price, spicy: 0, kcal: 650, signature: true, desc: '我的店' }]
+  });
+  LS.set('custom', customShops);
+  rebuildDishes();
+  rebuild();
+  renderMy();
+  $('fShop').value = ''; $('fDish').value = ''; $('fPrice').value = ''; $('fArea').value = '';
+  toast('加进去了，转盘已经带上它');
+}
+
+/* ====== 杂项 ====== */
+let toastTimer = null;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), 1700);
+}
+
+function tick(){
+  const d = new Date();
+  const hm = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  $('clock').textContent = hm;
+  const h = d.getHours();
+  let g = '今天想吃点啥';
+  if(h >= 9 && h < 11) g = '快下班了，先想好，别到点再纠结';
+  else if(h >= 11 && h < 13) g = '到饭点了，赶紧决定，晚了好店要排队';
+  else if(h >= 13 && h < 15) g = '吃完了吗？下次早点想';
+  else if(h >= 18) g = '晚饭也可以用它，反正都要决定';
+  $('greet').textContent = g;
+}
+
+/* ====== 事件 ====== */
+$('hub').addEventListener('click', spin);
+
+$('reshuffle').addEventListener('click', () => {
+  if(spinning) return;
+  rebuild();
+  toast('换了一批，转吧');
+});
+
+$('btnExclude').addEventListener('click', () => { renderExPanel(); openSheet('exSheet'); });
+$('btnManage').addEventListener('click', () => { renderMy(); openSheet('mySheet'); });
+
+$('mask').addEventListener('click', closeSheets);
+
+$('btnAgain').addEventListener('click', () => {
+  if(current) excludedIds.push(current.id);
+  excludedIds = excludedIds.filter((v, i, a) => a.indexOf(v) === i);
+  LS.set('excluded', excludedIds);
+  closeSheets();
+  rebuild();
+  setTimeout(spin, 260);
+});
+
+$('btnGo').addEventListener('click', () => {
+  if(current) record(current);
+  closeSheets();
+  rebuild();
+  toast('记下了 · 去吃吧');
+});
+
+$('resAlts').addEventListener('click', e => {
+  const row = e.target.closest('[data-alt]');
+  if(!row) return;
+  const d = DISHES.find(x => x.id === row.getAttribute('data-alt'));
+  if(d) showResult(d);
+});
+
+$('exCats').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]');
+  if(!b) return;
+  exCat = b.getAttribute('data-cat');
+  renderExPanel();
+});
+
+$('exList').addEventListener('click', e => {
+  const row = e.target.closest('[data-dish]');
+  if(!row) return;
+  const id = row.getAttribute('data-dish');
+  const i = excludedIds.indexOf(id);
+  if(i >= 0) excludedIds.splice(i, 1);
+  else excludedIds.push(id);
+  LS.set('excluded', excludedIds);
+  rebuild();
+  renderExPanel();
+});
+
+$('exReset').addEventListener('click', () => {
+  excludedIds = [];
+  LS.set('excluded', excludedIds);
+  rebuild();
+  renderExPanel();
+});
+
+$('exDone').addEventListener('click', () => {
+  closeSheets();
+  if(!pool().length){ toast('全被你排除了…'); return; }
+  setTimeout(spin, 240);
+});
+
+$('fAdd').addEventListener('click', addShop);
+
+$('myList').addEventListener('click', e => {
+  const del = e.target.closest('[data-del]');
+  if(!del) return;
+  const id = del.getAttribute('data-del');
+  customShops = customShops.filter(c => c.id !== id);
+  LS.set('custom', customShops);
+  rebuildDishes();
+  rebuild();
+  renderMy();
+  toast('删掉了');
+});
+
+$('btnQuick').addEventListener('click', openQuick);
+$('quickClose').addEventListener('click', e => { e.stopPropagation(); closeQuick(); });
+$('quick').addEventListener('pointerdown', quickStart);
+$('quick').addEventListener('pointerup', quickEnd);
+$('quick').addEventListener('pointercancel', quickEnd);
+$('quick').addEventListener('pointerleave', quickEnd);
+$('quickAgain').addEventListener('click', e => { e.stopPropagation(); openQuick(); });
+$('quickGo').addEventListener('click', e => {
+  e.stopPropagation();
+  if(!quickLocked) return;
+  const d = quickLocked;
+  closeQuick();
+  showResult(d);
+});
+
+/* ====== 心情 / 声音 / 饭签 / 微信提示 ====== */
+$('moods').addEventListener('click', e => {
+  const b = e.target.closest('[data-mood]');
+  if(!b) return;
+  const id = b.getAttribute('data-mood');
+  if(id === mood){ return; }
+  mood = id;
+  popSound();
+  if(!pool().length){
+    mood = 'all';
+    toast('这个筛完啥都不剩，先给你放开');
+  }
+  LS.set('mood', mood);
+  renderMoods();
+  rebuild();
+  const cur = MOODS.filter(m => m.id === mood)[0];
+  if(mood !== 'all' && cur) toast(cur.name + ' · ' + pool().length + ' 道进盘了');
+});
+
+$('sndBtn').addEventListener('click', () => {
+  soundOn = !soundOn;
+  LS.set('sound', soundOn);
+  renderSnd();
+  if(soundOn) popSound();
+  toast(soundOn ? '开声音了，转起来有咔哒声' : '静音了');
+});
+
+$('btnSign').addEventListener('click', openSign);
+$('signClose').addEventListener('click', () => $('sign').classList.remove('on'));
+$('sign').addEventListener('click', e => {
+  if(e.target.id === 'sign') $('sign').classList.remove('on');
+});
+$('signDl').addEventListener('click', () => {
+  const img = $('signImg');
+  if(!img.getAttribute('src')) return;
+  if(IS_WX){ toast('微信里长按图片就能保存'); return; }
+  const a = document.createElement('a');
+  a.href = img.getAttribute('src');
+  a.download = '今日饭签-' + (current ? current.name : 'lunch') + '.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('存好了');
+});
+
+$('wxTipClose').addEventListener('click', () => {
+  LS.set('wxTipOff', true);
+  $('wxTip').classList.remove('on');
+});
+
+window.addEventListener('resize', resize);
+
+/* ====== 启动 ====== */
+(function init(){
+  $('poolInfo').textContent = allShops().length + ' 家 · ' + DISHES.length + ' 道';
+  $('cnt').textContent = spinCount;
+  if(spinCount > 0 && spinCount < 900) $('counter').style.display = 'block';
+  tick(); setInterval(tick, 20000);
+  renderRecent();
+  renderSnd();
+  renderMoods();
+  rebuild();
+  resize();
+  requestAnimationFrame(() => { resize(); });
+
+  if(IS_WX && !LS.get('wxTipOff', false)){
+    setTimeout(() => $('wxTip').classList.add('on'), 1500);
+    setTimeout(() => $('wxTip').classList.remove('on'), 10000);
+  }
+})();
+</script>
+</body>
+</html>
