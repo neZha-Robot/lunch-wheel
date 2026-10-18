@@ -1499,7 +1499,13 @@ $('btnGo').addEventListener('click', () => {
   if(current) record(current);
   closeSheets();
   rebuild();
-  toast('记下了 · 去吃吧');
+  const done = [
+    '去吧，别再改主意了',
+    '定了 · 这顿算你赢',
+    '吃完了记得回来告诉我好不好吃',
+    '记下了 · 走路别看手机'
+  ];
+  toast(done[Math.floor(Math.random() * done.length)]);
 });
 
 $('resAlts').addEventListener('click', e => {
