@@ -300,6 +300,43 @@
     opacity:0;pointer-events:none;transition:all .26s
   }
   .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- 蓄力环 ---------- */
+  .charge{
+    position:absolute;inset:-7px;width:calc(100% + 14px);height:calc(100% + 14px);
+    transform:rotate(-90deg);pointer-events:none;z-index:7;opacity:0;transition:opacity .16s
+  }
+  .charge.on{opacity:1}
+  .charge circle{
+    fill:none;stroke:#FF6B2C;stroke-width:2.4;stroke-linecap:round;
+    stroke-dasharray:289;stroke-dashoffset:289;
+    filter:drop-shadow(0 0 7px rgba(255,107,44,.7))
+  }
+  .ring.windup{animation:windup .5s ease-in-out infinite}
+  @keyframes windup{0%,100%{transform:scale(1)}50%{transform:scale(1.006)}}
+  .pointer.hot{animation:ptrHot .14s linear infinite}
+  @keyframes ptrHot{0%,100%{transform:translateX(-50%) rotate(0)}50%{transform:translateX(-50%) rotate(-3deg)}}
+
+  /* ---------- 结果页的小动作 ---------- */
+  .sheet.on .res-top{animation:popIn .36s cubic-bezier(.2,1.35,.4,1) both}
+  @keyframes popIn{0%{transform:scale(.94);opacity:.4}100%{transform:scale(1);opacity:1}}
+  .sheet.egg .res-from{color:#E0392B}
+  .sheet.egg .res-emoji{animation:eggShake .5s ease-in-out 2}
+  @keyframes eggShake{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg) scale(1.08)}75%{transform:rotate(9deg) scale(1.08)}}
+
+  .blame-btn{
+    display:block;width:100%;margin-top:12px;padding:6px 0;border:none;background:none;
+    color:#B08F70;font-size:11px;font-family:inherit;cursor:pointer;letter-spacing:.2px
+  }
+  .blame-btn:active{color:var(--accent)}
+  .btn.beg{border-color:#E9B08C;color:#C4621F}
+  .btn.holding{background:#FFE9D6;border-color:#FF9A5C;color:#B84E12;transform:scale(.98)}
+  .tk-i{
+    display:inline-block;font-size:9.5px;line-height:1;padding:3px 6px;margin-left:6px;
+    border-radius:9px;background:rgba(255,255,255,.75);border:1px solid #F2DCC4;
+    color:#B08A64;vertical-align:middle;font-weight:600;letter-spacing:0
+  }
+  .btn-primary .tk-i{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35);color:#fff}
 </style>
 </head>
 <body>
@@ -321,17 +358,20 @@
   </div>
 
   <div class="stage">
-    <div class="ring">
+    <div class="ring" id="ring">
       <canvas id="wheel"></canvas>
-      <div class="pointer"></div>
-      <button class="hub" id="hub" aria-label="开始转盘">
-        <span id="hubGo">GO</span><span id="hubSub">点我</span>
+      <div class="pointer" id="pointer"></div>
+      <svg class="charge" id="charge" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46"></circle>
+      </svg>
+      <button class="hub" id="hub" aria-label="按住转到松手">
+        <span id="hubGo">GO</span><span id="hubSub">按住</span>
       </button>
     </div>
   </div>
 
   <div class="pool-line">
-    <span>12 格从附近 <b id="poolNum">58</b> 家里随机抽，转完自动换盘</span>
+    <span>按住中间蓄力，松手发射 · 12 格从附近 <b id="poolNum">58</b> 家里抽</span>
     <button id="reshuffle">换一批 ↻</button>
   </div>
 
@@ -388,6 +428,7 @@
     <button class="btn btn-ghost" id="btnAgain">不是这个，再抽</button>
     <button class="btn btn-primary" id="btnGo">就它了</button>
   </div>
+  <button class="blame-btn" id="btnBlame">🎲 甩锅：复制一句话，发群里就说「转盘定的」</button>
   <button class="sign-btn" id="btnSign">📤 生成饭签，发群里让同事投票</button>
 </div>
 
@@ -709,9 +750,154 @@ function draw(rot){
   ctx.fill();
 }
 
+/* ====== 小巧思：蓄力 / 反悔券 / 嘴替 ====== */
+const SITE = 'https://nezha-robot.github.io/lunch-wheel';
+const CIRC = 289;            // 蓄力环周长（r=46）
+const CHARGE_MAX = 2400;     // 按满需要的毫秒
+const chargeCircle = document.querySelector('#charge circle');
+
+let charging = false, chargeP = 0, chargeStart = 0, chargeRAF = 0, lastRelease = -9999;
+
+function chargeUIRefresh(p){
+  chargeP = p;
+  if(chargeCircle && chargeCircle.style) chargeCircle.style.strokeDashoffset = String(Math.max(0, CIRC * (1 - p)));
+  const hub = $('hub');
+  if(hub && hub.style) hub.style.transform = 'translate(-50%,-50%) scale(' + (1 + p * 0.08).toFixed(3) + ')';
+}
+
+function chargeTick(){
+  if(!charging) return;
+  const raw = (performance.now() - chargeStart) / CHARGE_MAX;
+  chargeUIRefresh(Math.min(1, Math.pow(Math.min(1, raw), 0.8)));
+  if(raw >= 1.3){            // 按太久 → 手滑，自己发射
+    toast('手滑了，转盘自己跑了');
+    releaseCharge(true);
+    return;
+  }
+  chargeRAF = requestAnimationFrame(chargeTick);
+}
+
+function startCharge(){
+  if(spinning || charging) return;
+  ac();
+  charging = true;
+  chargeStart = performance.now();
+  chargeP = 0;
+  $('charge').classList.add('on');
+  $('ring').classList.add('windup');
+  $('hubSub').textContent = '别松手';
+  chargeTick();
+}
+
+function releaseCharge(auto){
+  if(!charging) return;
+  charging = false;
+  cancelAnimationFrame(chargeRAF);
+  $('charge').classList.remove('on');
+  $('ring').classList.remove('windup');
+  const hub = $('hub');
+  if(hub && hub.style) hub.style.transform = '';
+  if(chargeCircle && chargeCircle.style) chargeCircle.style.strokeDashoffset = String(CIRC);
+  const p = auto ? 1 : chargeP;
+  lastRelease = performance.now();
+  spin(p);
+}
+
+/* 反悔券：每天 3 张，用完得按住认命 */
+const TICKET_MAX = 3;
+function dayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+function tickets(){
+  const o = LS.get('tickets', null);
+  if(!o || o.d !== dayStr() || typeof o.n !== 'number') return { d: dayStr(), n: TICKET_MAX };
+  return o;
+}
+function takeTicket(){
+  const o = tickets();
+  if(o.n <= 0) return false;
+  o.n -= 1;
+  LS.set('tickets', o);
+  return true;
+}
+function renderAgain(){
+  const b = $('btnAgain');
+  if(!b) return;
+  const n = tickets().n;
+  b.classList.remove('beg');
+  if(n > 0){
+    b.innerHTML = '换一家<span class="tk-i">反悔券 ' + n + '/' + TICKET_MAX + '</span>';
+  } else {
+    b.classList.add('beg');
+    b.innerHTML = '我认命<span class="tk-i">按住 1.5 秒</span>';
+  }
+}
+
+/* 嘴替：时间 + 距离 + 随机尾句，拼一句人话 */
+function hourLine(){
+  const h = new Date().getHours();
+  if(h < 5) return '这个点还没睡，明天中午吃啥先定个方向';
+  if(h < 10) return '这个点吃的是早午饭，不用解释';
+  if(h < 11) return '十点多就饿了，说明早饭没吃对';
+  if(h < 13) return '正点，现在出发刚好躲过排队';
+  if(h < 15) return '迟到的午饭，后厨都在收摊了';
+  if(h < 17) return '这个点吃，晚饭还算不算数';
+  if(h < 21) return '晚饭时间却在想中午吃啥，很有远见';
+  return '都这个点了，那是在给明天中午排雷';
+}
+function distLine(m){
+  if(!m && m !== 0) return '距离未知，当开盲盒';
+  if(m < 250) return '近到连偷懒的借口都没有';
+  if(m < 600) return '走过去刚好消食，回来正好困';
+  if(m < 1000) return '一公里内，算给足面子了';
+  return '走这么远，这顿必须吃回本';
+}
+const CLOSERS = [
+  '别再刷外卖软件了，刷出来的都是同一批。',
+  '今天就决定到这儿，剩下的交给腿。',
+  '看再多也不会更想吃，走了。',
+  '记住这一顿，下午全靠它扛。',
+  '你比 80% 的同事先决定了，这算赢。'
+];
+function mouthLine(d){
+  return hourLine() + '。' + distLine(d.distance) + '。' + CLOSERS[Math.floor(Math.random() * CLOSERS.length)];
+}
+
+/* 彩蛋：连着抽到同一家 */
+function pickHistory(id){
+  const h = LS.get('picks', []);
+  h.push(id);
+  while(h.length > 8) h.shift();
+  LS.set('picks', h);
+  let streak = 0;
+  for(let i = h.length - 1; i >= 0 && h[i] === id; i--) streak++;
+  return streak;
+}
+
+function copyText(t){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; }
+  }catch(e){}
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = t;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    if(ta.setSelectionRange) ta.setSelectionRange(0, t.length);
+    const ok = typeof document.execCommand === 'function' ? document.execCommand('copy') : false;
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+
 /* ====== 转盘动画 ====== */
-const HUB_SUBS = ['点我', '别看手机了', '交给天意', '闭眼按', '别犹豫了', '今天该决断了'];
-function spin(){
+const HUB_SUBS = ['再按一次', '手别抖', '大力出奇迹', '轻轻按就行', '别问我', '你自己定吧'];
+function spin(power){
   if(spinning) return;
   if(!slices.length){ rebuild(); return; }
   spinning = true;
@@ -720,6 +906,7 @@ function spin(){
   $('hubGo').textContent = '···';
   $('hubSub').textContent = '转着呢';
 
+  const pw = (typeof power === 'number' && power === power) ? Math.max(0, Math.min(1, power)) : 0.5;
   const n = slices.length, seg = Math.PI*2/n;
   const target = Math.floor(Math.random()*n);
   const jitter = (Math.random() - 0.5) * seg * 0.5;
@@ -728,11 +915,30 @@ function spin(){
   const start = currentRot;
   let final = base;
   while(final < start + Math.PI*2) final += Math.PI*2;
-  final += Math.PI*2 * 5;
+  final += Math.PI*2 * (4 + Math.round(pw * 6));   // 力气越大，圈数越多：4~10 圈
 
-  const dur = 4200 + Math.random()*500;
+  const dur = 3500 + pw * 1200;
   const t0 = performance.now();
-  const ease = t => 1 - Math.pow(1 - t, 4);
+
+  /* 第四次方缓出 + 78%~88% 处一次「假装要停」的回弹 */
+  const ease = t => {
+    const base1 = 1 - Math.pow(1 - t, 4);
+    if(t > 0.74 && t < 0.88){
+      const u = (t - 0.74) / 0.14;
+      return base1 - Math.sin(u * Math.PI) * 0.004;
+    }
+    return base1;
+  };
+
+  /* 力气文案：松手那一刻就吐槽 */
+  if(pw < 0.15) toast('就这点力气？转盘差点没理你');
+  else if(pw < 0.45) toast('用了 ' + Math.round(pw*100) + '% 的力气，随缘吧');
+  else if(pw < 0.8) toast('力气刚好，转盘很配合');
+  else if(pw < 0.97) toast(Math.round(pw*100) + '% 的力气，转盘有点飘');
+  else toast('太猛了，转盘差点飞出去');
+
+  const ptr = $('pointer');
+  if(ptr) ptr.classList.add('hot');
 
   /* 转过的格子数变化时「咔哒」一声，越接近停下越疏 */
   let lastIdx = Math.floor(currentRot / seg);
@@ -754,12 +960,13 @@ function spin(){
     else {
       spinning = false;
       hub.classList.remove('busy');
+      if(ptr) ptr.classList.remove('hot');
       $('hubGo').textContent = 'GO';
       $('hubSub').textContent = HUB_SUBS[Math.floor(Math.random()*HUB_SUBS.length)];
       dingSound();
-      shake(30);
+      shake(30 + Math.round(pw * 40));
       const picked = slices[target];
-      if(picked) showResult(picked);
+      if(picked) showResult(picked, pw);
     }
   }
   requestAnimationFrame(frame);
@@ -768,9 +975,10 @@ function spin(){
 /* ====== 结果 ====== */
 let current = null;
 
-function showResult(d){
+function showResult(d, pw){
   current = d;
-  $('resFrom').textContent = '今天中午去';
+  const hh = new Date().getHours();
+  $('resFrom').textContent = (hh >= 20 || hh < 5) ? '明天中午去' : '今天中午去';
   $('resEmoji').textContent = d.emoji || '🍽';
   $('resName').textContent = d.name;
   $('resShop').textContent = '🍽 ' + d.catName;
@@ -784,13 +992,21 @@ function showResult(d){
   if(d.distance) chips += '<span class="chip plain">步行 ' + distText(d.distance) + '</span>';
   $('resChips').innerHTML = chips;
 
-  const lines = [
-    '别挑了，这家离你最近是命。',
-    '都转到这儿了，再犹豫就真晚了。',
-    '这家离你 ' + distText(d.distance) + '，走过去刚好消食。',
-    '今天的答案已经出现了，别再刷外卖软件了。'
-  ];
-  $('resLine').textContent = lines[Math.floor(Math.random()*lines.length)];
+  /* 嘴替：按时间 + 距离现拼一句 */
+  $('resLine').textContent = mouthLine(d);
+
+  /* 彩蛋：连着抽到同一家 */
+  const streak = pickHistory(d.id);
+  const sheet = $('sheet');
+  if(streak >= 3){
+    $('resFrom').textContent = '它已经第 ' + streak + ' 次赖上你了';
+    sheet.classList.add('egg');
+    setTimeout(() => toast('转盘：不用再转了，就我'), 420);
+  } else {
+    sheet.classList.remove('egg');
+  }
+
+  renderAgain();
 
   // 备选：同品类的其他店，实在不想去就换一家
   const alts = shuffle(ITEMS.filter(x => x.id !== d.id && x.catId === d.catId)).slice(0, 3);
@@ -1191,17 +1407,31 @@ function tick(){
   const d = new Date();
   const hm = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   $('clock').textContent = hm;
-  const h = d.getHours();
+  const h = d.getHours(), w = d.getDay();
   let g = '今天想吃点啥';
   if(h >= 9 && h < 11) g = '快下班了，先想好，别到点再纠结';
   else if(h >= 11 && h < 13) g = '到饭点了，赶紧决定，晚了好店要排队';
   else if(h >= 13 && h < 15) g = '吃完了吗？下次早点想';
   else if(h >= 18) g = '晚饭也可以用它，反正都要决定';
+  if(h >= 21) g = '这个点还开着，说明今晚要加班';
+  /* 星期人格 */
+  if(w === 1 && h >= 9 && h < 15) g = '周一，先吃点能撑住的';
+  else if(w === 5 && h >= 10 && h < 15) g = '周五了，今天允许自己贵一点';
+  else if((w === 0 || w === 6) && h >= 10 && h < 15) g = '周末还在纠结午饭，这问题不小';
   $('greet').textContent = g;
+  renderAgain();
 }
 
 /* ====== 事件 ====== */
-$('hub').addEventListener('click', spin);
+/* 按住蓄力，松手发射；click 只在键盘/程序触发时兜底 */
+$('hub').addEventListener('pointerdown', startCharge);
+$('hub').addEventListener('pointerup', () => releaseCharge(false));
+$('hub').addEventListener('pointercancel', () => releaseCharge(false));
+$('hub').addEventListener('pointerleave', () => releaseCharge(false));
+$('hub').addEventListener('click', () => {
+  if(performance.now() - lastRelease < 500) return;   // 上面的 pointerup 已经处理过
+  spin(0.55);
+});
 
 $('reshuffle').addEventListener('click', () => {
   if(spinning) return;
@@ -1214,13 +1444,55 @@ $('btnManage').addEventListener('click', () => { renderMy(); openSheet('mySheet'
 
 $('mask').addEventListener('click', closeSheets);
 
-$('btnAgain').addEventListener('click', () => {
+/* 反悔：有券直接换；没券得按住 1.5 秒「认命」 */
+function doAgain(free){
+  if(!free && !takeTicket()) return false;
   if(current) excludedIds.push(current.id);
   excludedIds = excludedIds.filter((v, i, a) => a.indexOf(v) === i);
   LS.set('excluded', excludedIds);
   closeSheets();
   rebuild();
-  setTimeout(spin, 260);
+  renderAgain();
+  setTimeout(() => spin(0.6), 260);
+  const n = tickets().n;
+  if(free) toast('认命了 · 那就再转一次');
+  else toast(n > 0 ? '反悔券 -1，还剩 ' + n + ' 张' : '最后一张用完了，下次得认命');
+  return true;
+}
+
+$('btnAgain').addEventListener('click', () => {
+  if(tickets().n > 0){ doAgain(false); return; }
+  toast('今天的 3 张反悔券用完了 · 按住 1.5 秒认命');
+});
+
+let begTimer = 0, begging = false;
+$('btnAgain').addEventListener('pointerdown', () => {
+  if(tickets().n > 0) return;
+  begging = true;
+  $('btnAgain').classList.add('holding');
+  begTimer = setTimeout(() => {
+    begging = false;
+    $('btnAgain').classList.remove('holding');
+    doAgain(true);
+  }, 1500);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => {
+  $('btnAgain').addEventListener(ev, () => {
+    if(!begging) return;
+    begging = false;
+    clearTimeout(begTimer);
+    $('btnAgain').classList.remove('holding');
+  });
+});
+
+/* 甩锅给转盘 */
+$('btnBlame').addEventListener('click', () => {
+  if(!current) return;
+  const txt = '今天中午吃「' + current.name + '」· ' + current.catName +
+    (current.distance ? ' · 步行 ' + distText(current.distance) : '') +
+    '｜转盘转出来的，不关我事 🎲 ' + SITE;
+  if(copyText(txt)) toast('复制好了 · 直接粘到群里');
+  else toast('复制不了，长按这句手动复制：' + txt.slice(0, 18) + '…');
 });
 
 $('btnGo').addEventListener('click', () => {
